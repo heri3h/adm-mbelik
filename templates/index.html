@@ -25,13 +25,13 @@
                     <i class="fa-solid fa-chart-line text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight text-white">Ad Profit & Metrics Dashboard</h1>
+                    <h1 class="text-xl font-bold tracking-tight text-white">Ad Profit & ROI Monitor</h1>
                     <p class="text-xs text-slate-400">Google Ad Manager (GAM) & Google Ads Unified Analytics</p>
                 </div>
             </div>
 
             <!-- Header Actions & Status -->
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-3">
                 <div id="mode-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                     <span id="mode-text">Memuat Status...</span>
@@ -59,14 +59,24 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
         <!-- Controls / Filters -->
-        <section class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-wrap justify-between items-center gap-4">
-            <div class="flex flex-wrap items-center gap-3">
+        <section class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
                 <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rentang Waktu:</label>
-                <select id="filter-days" onchange="loadDashboardData()" class="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <select id="filter-period" onchange="handlePeriodChange()" class="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <option value="today">Hari Ini (Today)</option>
+                    <option value="yesterday">Kemarin (Yesterday)</option>
                     <option value="7">7 Hari Terakhir</option>
                     <option value="30" selected>30 Hari Terakhir</option>
                     <option value="90">90 Hari Terakhir</option>
+                    <option value="custom">Opsi Custom Tanggal</option>
                 </select>
+
+                <!-- Container Input Custom Date Range (Sembunyi secara default) -->
+                <div id="custom-date-container" class="hidden flex items-center gap-2">
+                    <input type="date" id="custom-start-date" onchange="loadDashboardData()" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    <span class="text-xs text-slate-500">s/d</span>
+                    <input type="date" id="custom-end-date" onchange="loadDashboardData()" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
 
                 <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-2">Sumber Iklan:</label>
                 <select id="filter-source" onchange="loadDashboardData()" class="bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
@@ -76,109 +86,107 @@
                 </select>
             </div>
 
-            <div class="text-xs text-slate-400">
+            <div class="text-xs text-slate-400 self-end md:self-auto">
                 Terakhir diperbarui: <span id="last-updated-time" class="text-slate-200 font-mono">-</span>
             </div>
         </section>
 
         <!-- Summary Cards Grid -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
-            <!-- Card 1: Total Revenue -->
+            <!-- Card 1: Total Spend -->
+            <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-sm hover:border-rose-500/50 transition">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Spend</p>
+                        <h3 id="card-spend" class="text-2xl font-bold text-rose-400 mt-2">$0.00</h3>
+                    </div>
+                    <div class="p-3 bg-rose-500/10 text-rose-400 rounded-lg">
+                        <i class="fa-solid fa-wallet text-lg"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-3">Biaya Iklan (Ad Spend)</p>
+            </div>
+
+            <!-- Card 2: Total Earning -->
             <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-sm hover:border-emerald-500/50 transition">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Pendapatan</p>
-                        <h3 id="card-revenue" class="text-2xl font-bold text-emerald-400 mt-2">$0.00</h3>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Earning</p>
+                        <h3 id="card-earning" class="text-2xl font-bold text-emerald-400 mt-2">$0.00</h3>
                     </div>
                     <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg">
-                        <i class="fa-solid fa-dollar-sign text-lg"></i>
+                        <i class="fa-solid fa-sack-dollar text-lg"></i>
                     </div>
                 </div>
-                <p class="text-xs text-slate-400 mt-3 flex items-center gap-1">
-                    <i class="fa-solid fa-circle-check text-emerald-400 text-[10px]"></i> Metrik Pendapatan (USD)
-                </p>
+                <p class="text-xs text-slate-400 mt-3">Pendapatan Kotor (Revenue)</p>
             </div>
 
-            <!-- Card 2: Total Impressions -->
-            <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-sm hover:border-blue-500/50 transition">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Impression</p>
-                        <h3 id="card-impressions" class="text-2xl font-bold text-blue-400 mt-2">0</h3>
-                    </div>
-                    <div class="p-3 bg-blue-500/10 text-blue-400 rounded-lg">
-                        <i class="fa-solid fa-eye text-lg"></i>
-                    </div>
-                </div>
-                <p class="text-xs text-slate-400 mt-3">Jumlah tayangan iklan</p>
-            </div>
-
-            <!-- Card 3: Avg Fill Rate -->
-            <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-sm hover:border-purple-500/50 transition">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rata-rata Fill Rate</p>
-                        <h3 id="card-fillrate" class="text-2xl font-bold text-purple-400 mt-2">0.00%</h3>
-                    </div>
-                    <div class="p-3 bg-purple-500/10 text-purple-400 rounded-lg">
-                        <i class="fa-solid fa-chart-pie text-lg"></i>
-                    </div>
-                </div>
-                <p class="text-xs text-slate-400 mt-3">Matched / Ad Requests</p>
-            </div>
-
-            <!-- Card 4: Avg CTR -->
-            <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-sm hover:border-amber-500/50 transition">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rata-rata CTR</p>
-                        <h3 id="card-ctr" class="text-2xl font-bold text-amber-400 mt-2">0.00%</h3>
-                    </div>
-                    <div class="p-3 bg-amber-500/10 text-amber-400 rounded-lg">
-                        <i class="fa-solid fa-arrow-pointer text-lg"></i>
-                    </div>
-                </div>
-                <p class="text-xs text-slate-400 mt-3">Click-Through Rate</p>
-            </div>
-
-            <!-- Card 5: Avg RPM -->
+            <!-- Card 3: Net Profit -->
             <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-sm hover:border-cyan-500/50 transition">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rata-rata RPM</p>
-                        <h3 id="card-rpm" class="text-2xl font-bold text-cyan-400 mt-2">$0.00</h3>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Net Profit</p>
+                        <h3 id="card-profit" class="text-2xl font-bold text-cyan-400 mt-2">$0.00</h3>
                     </div>
                     <div class="p-3 bg-cyan-500/10 text-cyan-400 rounded-lg">
-                        <i class="fa-solid fa-chart-simple text-lg"></i>
+                        <i class="fa-solid fa-money-bill-trend-up text-lg"></i>
                     </div>
                 </div>
-                <p class="text-xs text-slate-400 mt-3">Pendapatan per 1.000 Tayangan</p>
+                <p class="text-xs text-slate-400 mt-3">Earning - Spend</p>
+            </div>
+
+            <!-- Card 4: ROI (%) -->
+            <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-sm hover:border-indigo-500/50 transition">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">ROI (%)</p>
+                        <h3 id="card-roi" class="text-2xl font-bold text-indigo-400 mt-2">0.00%</h3>
+                    </div>
+                    <div class="p-3 bg-indigo-500/10 text-indigo-400 rounded-lg">
+                        <i class="fa-solid fa-bullseye text-lg"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-3">Return on Investment</p>
+            </div>
+
+            <!-- Card 5: Impression & Performa -->
+            <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-sm hover:border-amber-500/50 transition">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Impression</p>
+                        <h3 id="card-impressions" class="text-2xl font-bold text-amber-400 mt-2">0</h3>
+                    </div>
+                    <div class="p-3 bg-amber-500/10 text-amber-400 rounded-lg">
+                        <i class="fa-solid fa-eye text-lg"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-3">CTR: <span id="card-ctr" class="text-slate-200 font-semibold">0%</span> | RPM: <span id="card-rpm" class="text-slate-200 font-semibold">$0</span></p>
             </div>
         </section>
 
         <!-- Charts Section -->
         <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Chart 1: Revenue & Impressions Time Series -->
+            <!-- Chart 1: Earning, Spend, Profit Time Series -->
             <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-sm">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-base font-semibold text-slate-100 flex items-center gap-2">
-                        <i class="fa-solid fa-chart-area text-indigo-400"></i> Tren Pendapatan & Impression
+                        <i class="fa-solid fa-chart-column text-emerald-400"></i> Analisis Finansial (Earning, Spend, Profit)
                     </h2>
                 </div>
                 <div class="relative h-72">
-                    <canvas id="chart-revenue-imp"></canvas>
+                    <canvas id="chart-financial"></canvas>
                 </div>
             </div>
 
-            <!-- Chart 2: CTR & Fill Rate Time Series -->
+            <!-- Chart 2: ROI & CTR Time Series -->
             <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-sm">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-base font-semibold text-slate-100 flex items-center gap-2">
-                        <i class="fa-solid fa-chart-line text-purple-400"></i> Performa CTR (%) & Fill Rate (%)
+                        <i class="fa-solid fa-chart-line text-indigo-400"></i> Performa ROI (%) & CTR (%)
                     </h2>
                 </div>
                 <div class="relative h-72">
-                    <canvas id="chart-ctr-fill"></canvas>
+                    <canvas id="chart-roi-ctr"></canvas>
                 </div>
             </div>
         </section>
@@ -188,9 +196,9 @@
             <div class="p-5 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div>
                     <h2 class="text-base font-semibold text-slate-100 flex items-center gap-2">
-                        <i class="fa-solid fa-table text-slate-400"></i> Rincian Data Metrik Harian
+                        <i class="fa-solid fa-table text-slate-400"></i> Rincian Data Financial & Performa Harian
                     </h2>
-                    <p class="text-xs text-slate-400 mt-0.5">Catatan performa unit iklan per hari</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Catatan Spend, Earning, Profit, ROI, dan Impression per hari</p>
                 </div>
                 
                 <div class="w-full sm:w-64">
@@ -207,11 +215,12 @@
                         <tr>
                             <th class="py-3.5 px-4">Tanggal</th>
                             <th class="py-3.5 px-4">Sumber</th>
-                            <th class="py-3.5 px-4 text-right">Revenue ($)</th>
+                            <th class="py-3.5 px-4 text-right">Spend ($)</th>
+                            <th class="py-3.5 px-4 text-right">Earning ($)</th>
+                            <th class="py-3.5 px-4 text-right">Profit ($)</th>
+                            <th class="py-3.5 px-4 text-right">ROI (%)</th>
                             <th class="py-3.5 px-4 text-right">Impression</th>
                             <th class="py-3.5 px-4 text-right">Klik</th>
-                            <th class="py-3.5 px-4 text-right">Ad Requests</th>
-                            <th class="py-3.5 px-4 text-right">Matched Req</th>
                             <th class="py-3.5 px-4 text-right">CTR (%)</th>
                             <th class="py-3.5 px-4 text-right">Fill Rate (%)</th>
                             <th class="py-3.5 px-4 text-right">RPM ($)</th>
@@ -219,7 +228,7 @@
                     </thead>
                     <tbody id="table-body" class="divide-y divide-slate-700/50">
                         <tr>
-                            <td colspan="10" class="py-8 text-center text-slate-400">
+                            <td colspan="11" class="py-8 text-center text-slate-400">
                                 <i class="fa-solid fa-spinner fa-spin mr-2"></i> Memuat data tabel...
                             </td>
                         </tr>

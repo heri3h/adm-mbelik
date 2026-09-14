@@ -1,10 +1,48 @@
-let chartRevenueImp = null;
-let chartCtrFill = null;
+let chartFinancial = null;
+let chartRoiCtr = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     checkStatus();
     loadDashboardData();
 });
+
+function handlePeriodChange() {
+    const period = document.getElementById("filter-period").value;
+    const customContainer = document.getElementById("custom-date-container");
+
+    if (period === "custom") {
+        customContainer.classList.remove("hidden");
+        // Pre-fill default dates if empty
+        const today = new Date().toISOString().split('T')[0];
+        if (!document.getElementById("custom-end-date").value) {
+            document.getElementById("custom-end-date").value = today;
+        }
+        if (!document.getElementById("custom-start-date").value) {
+            const d = new Date();
+            d.setDate(d.getDate() - 30);
+            document.getElementById("custom-start-date").value = d.toISOString().split('T')[0];
+        }
+    } else {
+        customContainer.classList.add("hidden");
+    }
+
+    loadDashboardData();
+}
+
+function buildQueryParams() {
+    const period = document.getElementById("filter-period").value;
+    const source = document.getElementById("filter-source").value;
+    let query = `period=${period}&source=${source}`;
+
+    if (period === "custom") {
+        const sDate = document.getElementById("custom-start-date").value;
+        const eDate = document.getElementById("custom-end-date").value;
+        if (sDate) query += `&start_date=${sDate}`;
+        if (eDate) query += `&end_date=${eDate}`;
+    }
+
+    return query;
+}
 
 async function checkStatus() {
     try {
@@ -25,27 +63,43 @@ async function checkStatus() {
 }
 
 async function loadDashboardData() {
-    const days = document.getElementById("filter-days").value;
-    const source = document.getElementById("filter-source").value;
+    const query = buildQueryParams();
 
     await Promise.all([
-        fetchSummary(days, source),
-        fetchTimeseries(days, source),
-        fetchDailyDetails(days, source)
+        fetchSummary(query),
+        fetchTimeseries(query),
+        fetchDailyDetails(query)
     ]);
 
     document.getElementById("last-updated-time").textContent = new Date().toLocaleTimeString("id-ID");
 }
 
-async function fetchSummary(days, source) {
+async function fetchSummary(query) {
     try {
-        const res = await fetch(`/api/summary?days=${days}&source=${source}`);
+        const res = await fetch(`/api/summary?${query}`);
         const data = await res.json();
         const s = data.summary;
 
-        document.getElementById("card-revenue").textContent = `$${s.total_revenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+        document.getElementById("card-spend").textContent = `$${s.total_spend.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+        document.getElementById("card-earning").textContent = `$${s.total_earning.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+        
+        const profitEl = document.getElementById("card-profit");
+        profitEl.textContent = `$${s.total_profit.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+        if (s.total_profit < 0) {
+            profitEl.className = "text-2xl font-bold text-rose-400 mt-2";
+        } else {
+            profitEl.className = "text-2xl font-bold text-cyan-400 mt-2";
+        }
+
+        const roiEl = document.getElementById("card-roi");
+        roiEl.textContent = `${s.total_roi}%`;
+        if (s.total_roi < 0) {
+            roiEl.className = "text-2xl font-bold text-rose-400 mt-2";
+        } else {
+            roiEl.className = "text-2xl font-bold text-indigo-400 mt-2";
+        }
+
         document.getElementById("card-impressions").textContent = s.total_impressions.toLocaleString('id-ID');
-        document.getElementById("card-fillrate").textContent = `${s.avg_fill_rate}%`;
         document.getElementById("card-ctr").textContent = `${s.avg_ctr}%`;
         document.getElementById("card-rpm").textContent = `$${s.avg_rpm.toFixed(2)}`;
     } catch (err) {
@@ -53,9 +107,9 @@ async function fetchSummary(days, source) {
     }
 }
 
-async function fetchTimeseries(days, source) {
+async function fetchTimeseries(query) {
     try {
-        const res = await fetch(`/api/timeseries?days=${days}&source=${source}`);
+        const res = await fetch(`/api/timeseries?${query}`);
         const data = await res.json();
         renderCharts(data);
     } catch (err) {
@@ -64,36 +118,43 @@ async function fetchTimeseries(days, source) {
 }
 
 function renderCharts(data) {
-    // Destroy previous charts if exist
-    if (chartRevenueImp) chartRevenueImp.destroy();
-    if (chartCtrFill) chartCtrFill.destroy();
+    if (chartFinancial) chartFinancial.destroy();
+    if (chartRoiCtr) chartRoiCtr.destroy();
 
-    // Chart 1: Revenue & Impression
-    const ctx1 = document.getElementById("chart-revenue-imp").getContext("2d");
-    chartRevenueImp = new Chart(ctx1, {
+    // Chart 1: Earning, Spend, Profit
+    const ctx1 = document.getElementById("chart-financial").getContext("2d");
+    chartFinancial = new Chart(ctx1, {
         type: "line",
         data: {
             labels: data.dates,
             datasets: [
                 {
-                    label: "Pendapatan ($)",
-                    data: data.revenues,
+                    label: "Earning ($)",
+                    data: data.earnings,
                     borderColor: "#10b981", // Emerald 500
                     backgroundColor: "rgba(16, 185, 129, 0.1)",
                     borderWidth: 2,
                     fill: true,
-                    tension: 0.3,
-                    yAxisID: "y-rev"
+                    tension: 0.3
                 },
                 {
-                    label: "Impression",
-                    data: data.impressions,
-                    borderColor: "#3b82f6", // Blue 500
-                    backgroundColor: "rgba(59, 130, 246, 0.05)",
+                    label: "Spend ($)",
+                    data: data.spends,
+                    borderColor: "#f43f5e", // Rose 500
+                    backgroundColor: "rgba(244, 63, 94, 0.1)",
                     borderWidth: 2,
                     fill: true,
-                    tension: 0.3,
-                    yAxisID: "y-imp"
+                    tension: 0.3
+                },
+                {
+                    label: "Profit ($)",
+                    data: data.profits,
+                    borderColor: "#06b6d4", // Cyan 500
+                    backgroundColor: "rgba(6, 182, 212, 0.05)",
+                    borderWidth: 2,
+                    borderDash: [4, 4],
+                    fill: false,
+                    tension: 0.3
                 }
             ]
         },
@@ -106,38 +167,27 @@ function renderCharts(data) {
             },
             scales: {
                 x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148, 163, 184, 0.1)" } },
-                "y-rev": {
-                    type: "linear",
-                    position: "left",
-                    ticks: { color: "#10b981", callback: v => "$" + v },
-                    grid: { color: "rgba(148, 163, 184, 0.1)" }
-                },
-                "y-imp": {
-                    type: "linear",
-                    position: "right",
-                    ticks: { color: "#3b82f6", callback: v => v.toLocaleString() },
-                    grid: { drawOnChartArea: false }
-                }
+                y: { ticks: { color: "#94a3b8", callback: v => "$" + v }, grid: { color: "rgba(148, 163, 184, 0.1)" } }
             }
         }
     });
 
-    // Chart 2: Fill Rate & CTR
-    const ctx2 = document.getElementById("chart-ctr-fill").getContext("2d");
-    chartCtrFill = new Chart(ctx2, {
+    // Chart 2: ROI (%) & CTR (%)
+    const ctx2 = document.getElementById("chart-roi-ctr").getContext("2d");
+    chartRoiCtr = new Chart(ctx2, {
         type: "line",
         data: {
             labels: data.dates,
             datasets: [
                 {
-                    label: "Fill Rate (%)",
-                    data: data.fill_rates,
-                    borderColor: "#a855f7", // Purple 500
-                    backgroundColor: "rgba(168, 85, 247, 0.1)",
+                    label: "ROI (%)",
+                    data: data.rois,
+                    borderColor: "#6366f1", // Indigo 500
+                    backgroundColor: "rgba(99, 102, 241, 0.1)",
                     borderWidth: 2,
                     fill: true,
                     tension: 0.3,
-                    yAxisID: "y-fill"
+                    yAxisID: "y-roi"
                 },
                 {
                     label: "CTR (%)",
@@ -160,10 +210,10 @@ function renderCharts(data) {
             },
             scales: {
                 x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148, 163, 184, 0.1)" } },
-                "y-fill": {
+                "y-roi": {
                     type: "linear",
                     position: "left",
-                    ticks: { color: "#a855f7", callback: v => v + "%" },
+                    ticks: { color: "#6366f1", callback: v => v + "%" },
                     grid: { color: "rgba(148, 163, 184, 0.1)" }
                 },
                 "y-ctr": {
@@ -177,16 +227,16 @@ function renderCharts(data) {
     });
 }
 
-async function fetchDailyDetails(days, source) {
+async function fetchDailyDetails(query) {
     try {
-        const res = await fetch(`/api/daily-details?days=${days}&source=${source}`);
+        const res = await fetch(`/api/daily-details?${query}`);
         const data = await res.json();
 
         const tbody = document.getElementById("table-body");
         tbody.innerHTML = "";
 
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" class="py-6 text-center text-slate-400">Tidak ada data ditemukan untuk filter ini.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" class="py-6 text-center text-slate-400">Tidak ada data ditemukan untuk filter ini.</td></tr>`;
             return;
         }
 
@@ -198,6 +248,9 @@ async function fetchDailyDetails(days, source) {
                 ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' 
                 : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
 
+            const profitClass = item.profit < 0 ? "text-rose-400 font-bold" : "text-cyan-400 font-bold";
+            const roiClass = item.roi < 0 ? "text-rose-400 font-bold" : "text-indigo-400 font-bold";
+
             tr.innerHTML = `
                 <td class="py-3 px-4 font-mono text-slate-200">${item.date}</td>
                 <td class="py-3 px-4">
@@ -205,11 +258,12 @@ async function fetchDailyDetails(days, source) {
                         ${item.source}
                     </span>
                 </td>
-                <td class="py-3 px-4 text-right font-medium text-emerald-400">$${item.revenue.toFixed(2)}</td>
+                <td class="py-3 px-4 text-right font-medium text-rose-400">$${item.spend.toFixed(2)}</td>
+                <td class="py-3 px-4 text-right font-medium text-emerald-400">$${item.earning.toFixed(2)}</td>
+                <td class="py-3 px-4 text-right ${profitClass}">$${item.profit.toFixed(2)}</td>
+                <td class="py-3 px-4 text-right ${roiClass}">${item.roi}%</td>
                 <td class="py-3 px-4 text-right">${item.impressions.toLocaleString()}</td>
                 <td class="py-3 px-4 text-right">${item.clicks.toLocaleString()}</td>
-                <td class="py-3 px-4 text-right text-slate-400">${item.ad_requests.toLocaleString()}</td>
-                <td class="py-3 px-4 text-right text-slate-400">${item.matched_requests.toLocaleString()}</td>
                 <td class="py-3 px-4 text-right font-medium text-amber-400">${item.ctr}%</td>
                 <td class="py-3 px-4 text-right font-medium text-purple-400">${item.fill_rate}%</td>
                 <td class="py-3 px-4 text-right font-medium text-cyan-400">$${item.rpm.toFixed(2)}</td>
@@ -226,11 +280,12 @@ async function syncData() {
     icon.classList.add("fa-spin");
 
     try {
-        const days = document.getElementById("filter-days").value;
+        const period = document.getElementById("filter-period").value;
+        const days = (period === "today" || period === "yesterday") ? 7 : (parseInt(period) || 30);
         const res = await fetch("/api/sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ days: parseInt(days) })
+            body: JSON.stringify({ days: days })
         });
         const data = await res.json();
         if (data.success) {

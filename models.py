@@ -13,14 +13,19 @@ class DailyAdMetric(db.Model):
     date = db.Column(db.Date, nullable=False, index=True)
     source = db.Column(db.String(50), nullable=False, default='GAM') # GAM / Google Ads / Aggregated
     
-    # Core Metrics
-    revenue = db.Column(db.Float, nullable=False, default=0.0)             # Pendapatan (USD/IDR)
+    # Financial Metrics
+    spend = db.Column(db.Float, nullable=False, default=0.0)               # Biaya Iklan / Ad Spend ($)
+    revenue = db.Column(db.Float, nullable=False, default=0.0)             # Pendapatan / Earning ($)
+    profit = db.Column(db.Float, nullable=False, default=0.0)              # Net Profit = Earning - Spend ($)
+    roi = db.Column(db.Float, nullable=False, default=0.0)                 # ROI (%) = ((Earning - Spend) / Spend) * 100
+
+    # Ad Performance Metrics
     impressions = db.Column(db.Integer, nullable=False, default=0)         # Impression
     clicks = db.Column(db.Integer, nullable=False, default=0)              # Klik
     ad_requests = db.Column(db.Integer, nullable=False, default=0)          # Ad Requests
     matched_requests = db.Column(db.Integer, nullable=False, default=0)     # Matched Requests (Responses Served)
 
-    # Derived Metrics (Calculated & Saved)
+    # Derived Metrics
     ctr = db.Column(db.Float, nullable=False, default=0.0)                 # CTR (%) = Clicks / Impressions * 100
     fill_rate = db.Column(db.Float, nullable=False, default=0.0)           # Fill Rate (%) = Matched / Ad Requests * 100
     rpm = db.Column(db.Float, nullable=False, default=0.0)                 # RPM ($) = (Revenue / Impressions) * 1000
@@ -29,7 +34,9 @@ class DailyAdMetric(db.Model):
     updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
 
     def calculate_derived_metrics(self):
-        """Hitung metrik turunan: CTR, Fill Rate, dan RPM secara otomatis."""
+        """Hitung metrik turunan: Profit, ROI, CTR, Fill Rate, dan RPM secara otomatis."""
+        self.profit = round(self.revenue - self.spend, 2)
+        self.roi = round((self.profit / self.spend * 100), 2) if self.spend > 0 else 0.0
         self.ctr = round((self.clicks / self.impressions * 100), 2) if self.impressions > 0 else 0.0
         self.fill_rate = round((self.matched_requests / self.ad_requests * 100), 2) if self.ad_requests > 0 else 0.0
         self.rpm = round((self.revenue / self.impressions * 1000), 2) if self.impressions > 0 else 0.0
@@ -40,7 +47,11 @@ class DailyAdMetric(db.Model):
             "id": self.id,
             "date": self.date.strftime('%Y-%m-%d'),
             "source": self.source,
+            "spend": round(self.spend, 2),
+            "earning": round(self.revenue, 2),
             "revenue": round(self.revenue, 2),
+            "profit": round(self.profit, 2),
+            "roi": round(self.roi, 2),
             "impressions": self.impressions,
             "clicks": self.clicks,
             "ad_requests": self.ad_requests,

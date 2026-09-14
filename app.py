@@ -20,7 +20,7 @@ def seed_database_if_empty():
 
 def sync_data_internal(days=30):
     """Fungsi internal untuk menarik data dari GAM & Google Ads ke database SQLite."""
-    end_date = datetime.now().date() - timedelta(days=1)
+    end_date = datetime.now().date()
     start_date = end_date - timedelta(days=days)
 
     gam_service = GAMService()
@@ -40,15 +40,43 @@ def sync_data_internal(days=30):
             )
             db.session.add(existing)
 
-        existing.revenue = rec['revenue']
-        existing.impressions = rec['impressions']
-        existing.clicks = rec['clicks']
-        existing.ad_requests = rec['ad_requests']
-        existing.matched_requests = rec['matched_requests']
+        existing.spend = rec.get('spend', 0.0)
+        existing.revenue = rec.get('revenue', 0.0)
+        existing.impressions = rec.get('impressions', 0)
+        existing.clicks = rec.get('clicks', 0)
+        existing.ad_requests = rec.get('ad_requests', 0)
+        existing.matched_requests = rec.get('matched_requests', 0)
         existing.calculate_derived_metrics()
 
     db.session.commit()
     print(f"[DB Sync] Berhasil memperbarui {len(all_records)} catatan metrik iklan.")
+
+def get_date_range_from_request(req):
+    """Mendapatkan tanggal mulai dan selesai dari parameter request."""
+    period = req.args.get('period', '30')
+    today = datetime.now().date()
+    
+    if period == 'today':
+        return today, today
+    elif period == 'yesterday':
+        yest = today - timedelta(days=1)
+        return yest, yest
+    elif period == 'custom':
+        s_str = req.args.get('start_date')
+        e_str = req.args.get('end_date')
+        try:
+            start_date = datetime.strptime(s_str, '%Y-%m-%d').date() if s_str else today - timedelta(days=30)
+            end_date = datetime.strptime(e_str, '%Y-%m-%d').date() if e_str else today
+        except Exception:
+            start_date = today - timedelta(days=30)
+            end_date = today
+        return start_date, end_date
+    else:
+        try:
+            days = int(period)
+        except Exception:
+            days = 30
+        return today - timedelta(days=days - 1), today
 
 @app.before_request
 def require_login_check():
@@ -56,7 +84,6 @@ def require_login_check():
     if not Config.REQUIRE_LOGIN:
         return None
     
-    # Endpoint bebas akses tanpa login
     allowed_routes = ['login', 'static', 'auth_callback']
     if request.endpoint in allowed_routes or session.get('logged_in'):
         return None
@@ -113,18 +140,21 @@ def api_sync():
 
 @app.route('/api/summary')
 def api_summary():
-    days = int(request.args.get('days', 30))
+    start_date, end_date = get_date_range_from_request(request)
     source = request.args.get('source', 'All')
 
-    start_date = datetime.now().date() - timedelta(days=days)
-    query = DailyAdMetric.query.filter(DailyAdMetric.date >= start_date)
+    query = DailyAdMetric.query.filter(DailyAdMetric.date >= start_date, DailyAdMetric.date <= end_date)
 
     if source != 'All':
         query = query.filter_by(source=source)
 
     metrics = query.all()
 
-    total_revenue = sum(m.revenue for m in metrics)
+    total_spend = sum(m.spend for m in metrics)
+    total_earning = sum(m.revenue for m in metrics)
+    total_profit = total_earning - total_spend
+    total_roi = round((total_profit / total_spend * 100), 2) if total_spend > 0 else 0.0
+
     total_impressions = sum(m.impressions for m in metrics)
     total_clicks = sum(m.clicks for m in metrics)
     total_ad_requests = sum(m.ad_requests for m in metrics)
@@ -132,13 +162,17 @@ def api_summary():
 
     avg_ctr = round((total_clicks / total_impressions * 100), 2) if total_impressions > 0 else 0.0
     avg_fill_rate = round((total_matched_requests / total_ad_requests * 100), 2) if total_ad_requests > 0 else 0.0
-    avg_rpm = round((total_revenue / total_impressions * 1000), 2) if total_impressions > 0 else 0.0
+    avg_rpm = round((total_earning / total_impressions * 1000), 2) if total_impressions > 0 else 0.0
 
     return jsonify({
-        "period_days": days,
+        "start_date": start_date.strftime('%Y-%m-%d'),
+        "end_date": end_date.strftime('%Y-%m-%d'),
         "source_filter": source,
         "summary": {
-            "total_revenue": round(total_revenue, 2),
+            "total_spend": round(total_spend, 2),
+            "total_earning": round(total_earning, 2),
+            "total_profit": round(total_profit, 2),
+            "total_roi": total_roi,
             "total_impressions": total_impressions,
             "total_clicks": total_clicks,
             "total_ad_requests": total_ad_requests,
@@ -151,29 +185,29 @@ def api_summary():
 
 @app.route('/api/timeseries')
 def api_timeseries():
-    days = int(request.args.get('days', 30))
+    start_date, end_date = get_date_range_from_request(request)
     source = request.args.get('source', 'All')
 
-    start_date = datetime.now().date() - timedelta(days=days)
-    query = DailyAdMetric.query.filter(DailyAdMetric.date >= start_date)
+    query = DailyAdMetric.query.filter(DailyAdMetric.date >= start_date, DailyAdMetric.date <= end_date)
 
     if source != 'All':
         query = query.filter_by(source=source)
 
     metrics = query.order_by(DailyAdMetric.date.asc()).all()
 
-    # Agregasikan berdasarkan tanggal jika source == All
     daily_map = {}
     for m in metrics:
         d_str = m.date.strftime('%Y-%m-%d')
         if d_str not in daily_map:
             daily_map[d_str] = {
+                "spend": 0.0,
                 "revenue": 0.0,
                 "impressions": 0,
                 "clicks": 0,
                 "ad_requests": 0,
                 "matched_requests": 0
             }
+        daily_map[d_str]["spend"] += m.spend
         daily_map[d_str]["revenue"] += m.revenue
         daily_map[d_str]["impressions"] += m.impressions
         daily_map[d_str]["clicks"] += m.clicks
@@ -181,7 +215,10 @@ def api_timeseries():
         daily_map[d_str]["matched_requests"] += m.matched_requests
 
     dates = sorted(daily_map.keys())
-    revenues = []
+    spends = []
+    earnings = []
+    profits = []
+    rois = []
     impressions = []
     ctrs = []
     fill_rates = []
@@ -189,7 +226,10 @@ def api_timeseries():
 
     for d in dates:
         item = daily_map[d]
+        sp = item["spend"]
         rev = item["revenue"]
+        prof = rev - sp
+        roi = round((prof / sp * 100), 2) if sp > 0 else 0.0
         imp = item["impressions"]
         clk = item["clicks"]
         req = item["ad_requests"]
@@ -199,7 +239,10 @@ def api_timeseries():
         fill = round((mat / req * 100), 2) if req > 0 else 0.0
         rpm = round((rev / imp * 1000), 2) if imp > 0 else 0.0
 
-        revenues.append(round(rev, 2))
+        spends.append(round(sp, 2))
+        earnings.append(round(rev, 2))
+        profits.append(round(prof, 2))
+        rois.append(roi)
         impressions.append(imp)
         ctrs.append(ctr)
         fill_rates.append(fill)
@@ -207,7 +250,10 @@ def api_timeseries():
 
     return jsonify({
         "dates": dates,
-        "revenues": revenues,
+        "spends": spends,
+        "earnings": earnings,
+        "profits": profits,
+        "rois": rois,
         "impressions": impressions,
         "ctrs": ctrs,
         "fill_rates": fill_rates,
@@ -216,11 +262,10 @@ def api_timeseries():
 
 @app.route('/api/daily-details')
 def api_daily_details():
-    days = int(request.args.get('days', 30))
+    start_date, end_date = get_date_range_from_request(request)
     source = request.args.get('source', 'All')
 
-    start_date = datetime.now().date() - timedelta(days=days)
-    query = DailyAdMetric.query.filter(DailyAdMetric.date >= start_date)
+    query = DailyAdMetric.query.filter(DailyAdMetric.date >= start_date, DailyAdMetric.date <= end_date)
 
     if source != 'All':
         query = query.filter_by(source=source)
