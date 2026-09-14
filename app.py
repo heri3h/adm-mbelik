@@ -155,6 +155,9 @@ def api_sync():
 
 @app.route('/api/summary')
 def api_summary():
+    if DailyAdMetric.query.count() == 0:
+        sync_data_internal(days=30)
+
     start_date, end_date = get_date_range_from_request(request)
     source = request.args.get('source', 'All')
 
@@ -164,6 +167,9 @@ def api_summary():
         query = query.filter_by(source=source)
 
     metrics = query.all()
+    if not metrics:
+        sync_data_internal(days=30)
+        metrics = query.all()
 
     total_spend = sum(m.spend for m in metrics)
     total_earning = sum(m.revenue for m in metrics)
@@ -200,6 +206,9 @@ def api_summary():
 
 @app.route('/api/timeseries')
 def api_timeseries():
+    if DailyAdMetric.query.count() == 0:
+        sync_data_internal(days=30)
+
     start_date, end_date = get_date_range_from_request(request)
     source = request.args.get('source', 'All')
 
@@ -209,6 +218,9 @@ def api_timeseries():
         query = query.filter_by(source=source)
 
     metrics = query.order_by(DailyAdMetric.date.asc()).all()
+    if not metrics:
+        sync_data_internal(days=30)
+        metrics = query.order_by(DailyAdMetric.date.asc()).all()
 
     daily_map = {}
     for m in metrics:
@@ -277,6 +289,9 @@ def api_timeseries():
 
 @app.route('/api/daily-details')
 def api_daily_details():
+    if DailyAdMetric.query.count() == 0:
+        sync_data_internal(days=30)
+
     start_date, end_date = get_date_range_from_request(request)
     source = request.args.get('source', 'All')
 
@@ -286,6 +301,10 @@ def api_daily_details():
         query = query.filter_by(source=source)
 
     metrics = query.order_by(DailyAdMetric.date.desc(), DailyAdMetric.source.asc()).all()
+    if not metrics:
+        sync_data_internal(days=30)
+        metrics = query.order_by(DailyAdMetric.date.desc(), DailyAdMetric.source.asc()).all()
+
     return jsonify([m.to_dict() for m in metrics])
 
 @app.route('/auth/login')
