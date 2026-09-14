@@ -230,23 +230,61 @@ def api_daily_details():
 
 @app.route('/auth/login')
 def auth_login():
-    url, state = get_authorization_url()
-    if not url:
-        return f"<h3>Error Authorization</h3><p>{state}</p>", 400
-    session['oauth_state'] = state
-    return redirect(url)
+    try:
+        url, state = get_authorization_url()
+        if not url:
+            return f"""
+            <div style="font-family:sans-serif;max-w:600px;margin:50px auto;padding:24px;background:#1e293b;color:#f87171;border:1px solid #334155;border-radius:12px;">
+                <h3 style="margin-top:0;">⚠️ Gagal Membuat OAuth Authorization URL</h3>
+                <p style="color:#e2e8f0;">{state}</p>
+                <p><a href="/" style="color:#60a5fa;text-decoration:none;">&larr; Kembali ke Dashboard</a></p>
+            </div>
+            """, 400
+        session['oauth_state'] = state
+        return redirect(url)
+    except Exception as e:
+        return f"""
+        <div style="font-family:sans-serif;max-w:600px;margin:50px auto;padding:24px;background:#1e293b;color:#f87171;border:1px solid #334155;border-radius:12px;">
+            <h3 style="margin-top:0;">⚠️ Error Server OAuth</h3>
+            <p style="color:#e2e8f0;">{str(e)}</p>
+            <p><a href="/" style="color:#60a5fa;text-decoration:none;">&larr; Kembali ke Dashboard</a></p>
+        </div>
+        """, 500
 
 @app.route('/auth/callback')
 def auth_callback():
     code = request.args.get('code')
     if not code:
-        return "Authorization code missing.", 400
+        return f"""
+        <div style="font-family:sans-serif;max-w:600px;margin:50px auto;padding:24px;background:#1e293b;color:#f87171;border:1px solid #334155;border-radius:12px;">
+            <h3 style="margin-top:0;">⚠️ Authorization Code Tidak Ditemukan</h3>
+            <p><a href="/" style="color:#60a5fa;text-decoration:none;">&larr; Kembali ke Dashboard</a></p>
+        </div>
+        """, 400
     credentials = get_credentials_from_code(code)
-    # Simpan refresh token jika didapat
+    if not credentials:
+        return f"""
+        <div style="font-family:sans-serif;max-w:600px;margin:50px auto;padding:24px;background:#1e293b;color:#f87171;border:1px solid #334155;border-radius:12px;">
+            <h3 style="margin-top:0;">⚠️ Gagal Menukar OAuth Code dengan Token</h3>
+            <p style="color:#e2e8f0;">Pastikan Client ID & Client Secret di file .env sudah sesuai.</p>
+            <p><a href="/" style="color:#60a5fa;text-decoration:none;">&larr; Kembali ke Dashboard</a></p>
+        </div>
+        """, 400
     return jsonify({
+        "success": True,
         "message": "Autentikasi OAuth 2.0 Berhasil!",
-        "refresh_token": credentials.refresh_token or "Token tersimpan di session"
+        "refresh_token": credentials.refresh_token or "Token berhasil disimpan"
     })
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return f"""
+    <div style="font-family:sans-serif;max-w:600px;margin:50px auto;padding:24px;background:#1e293b;color:#f87171;border:1px solid #334155;border-radius:12px;">
+        <h3 style="margin-top:0;">⚠️ 500 Internal Server Error</h3>
+        <p style="color:#e2e8f0;">{str(e)}</p>
+        <p><a href="/" style="color:#60a5fa;text-decoration:none;">&larr; Kembali ke Dashboard</a></p>
+    </div>
+    """, 500
 
 if __name__ == '__main__':
     seed_database_if_empty()
