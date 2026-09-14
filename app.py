@@ -11,9 +11,50 @@ app.config.from_object(Config)
 db.init_app(app)
 
 def seed_database_if_empty():
-    """Mengisi database awal dengan data mock dan migrasi tabel DomainMapping."""
+    """Mengisi database awal dengan data mock dan migrasi tabel SQLite secara otomatis."""
     with app.app_context():
         db.create_all()
+
+        # Migrasi kolom otomatis untuk SQLite jika kolom baru belum ada (Jalan DULUAN sebelum query model)
+        try:
+            inspector = db.inspect(db.engine)
+
+            # 1. Migrasi tabel daily_ad_metrics
+            if inspector.has_table('daily_ad_metrics'):
+                columns_daily = [c['name'] for c in inspector.get_columns('daily_ad_metrics')]
+                with db.engine.connect() as conn:
+                    if 'spend' not in columns_daily:
+                        conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN spend FLOAT DEFAULT 0.0"))
+                    if 'profit' not in columns_daily:
+                        conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN profit FLOAT DEFAULT 0.0"))
+                    if 'roi' not in columns_daily:
+                        conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN roi FLOAT DEFAULT 0.0"))
+                    if 'domain' not in columns_daily:
+                        conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN domain VARCHAR(100) DEFAULT 'mbelik.com'"))
+                    if 'google_ads_customer_id' not in columns_daily:
+                        conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN google_ads_customer_id VARCHAR(50) DEFAULT '-'"))
+                    if 'mcc_id' not in columns_daily:
+                        conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN mcc_id VARCHAR(50) DEFAULT '-'"))
+                    conn.commit()
+
+            # 2. Migrasi tabel domain_mappings
+            if inspector.has_table('domain_mappings'):
+                columns_map = [c['name'] for c in inspector.get_columns('domain_mappings')]
+                with db.engine.connect() as conn:
+                    if 'mcc_id' not in columns_map:
+                        conn.execute(db.text("ALTER TABLE domain_mappings ADD COLUMN mcc_id VARCHAR(50) DEFAULT '-'"))
+                    conn.commit()
+
+            # 3. Migrasi tabel manual_google_ads_spends
+            if inspector.has_table('manual_google_ads_spends'):
+                columns_spend = [c['name'] for c in inspector.get_columns('manual_google_ads_spends')]
+                with db.engine.connect() as conn:
+                    if 'mcc_id' not in columns_spend:
+                        conn.execute(db.text("ALTER TABLE manual_google_ads_spends ADD COLUMN mcc_id VARCHAR(50) DEFAULT '-'"))
+                    conn.commit()
+
+        except Exception as e:
+            print(f"[DB Migration Warning] {e}")
 
         # Seed default DomainMapping jika belum ada
         if DomainMapping.query.count() == 0:
@@ -25,27 +66,6 @@ def seed_database_if_empty():
                 description='Domain Utama'
             ))
             db.session.commit()
-
-        # Migrasi kolom otomatis untuk SQLite jika kolom baru belum ada
-        try:
-            inspector = db.inspect(db.engine)
-            columns = [c['name'] for c in inspector.get_columns('daily_ad_metrics')]
-            with db.engine.connect() as conn:
-                if 'spend' not in columns:
-                    conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN spend FLOAT DEFAULT 0.0"))
-                if 'profit' not in columns:
-                    conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN profit FLOAT DEFAULT 0.0"))
-                if 'roi' not in columns:
-                    conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN roi FLOAT DEFAULT 0.0"))
-                if 'domain' not in columns:
-                    conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN domain VARCHAR(100) DEFAULT 'mbelik.com'"))
-                if 'google_ads_customer_id' not in columns:
-                    conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN google_ads_customer_id VARCHAR(50) DEFAULT '-'"))
-                if 'mcc_id' not in columns:
-                    conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN mcc_id VARCHAR(50) DEFAULT '-'"))
-                conn.commit()
-        except Exception as e:
-            print(f"[DB Migration Warning] {e}")
 
         if DailyAdMetric.query.count() == 0:
             print("[DB Seed] Memulai sinkronisasi data awal ke SQLite...")
