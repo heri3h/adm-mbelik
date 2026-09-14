@@ -1,0 +1,24 @@
+# Virtual environment
+venv/
+ENV/
+env/
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Database SQLite & Instance
+*.sqlite
+instance/
+
+# Local Environment Variables
+.env
+
+# Zip Archives & Logs
+*.zip
+*.log
+
+# macOS DS_Store
+.DS_Store

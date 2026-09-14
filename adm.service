@@ -1,0 +1,14 @@
+[Unit]
+Description=Ad Performance & Profit Monitor Flask Application (adm.mbelik.com)
+After=network.target
+
+[Service]
+User=mbummm
+Group=mbummm
+WorkingDirectory=/home/mbummm/web/adm.mbelik.com/public_html
+ExecStart=/home/mbummm/web/adm.mbelik.com/public_html/venv/bin/gunicorn -c gunicorn.conf.py wsgi:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
