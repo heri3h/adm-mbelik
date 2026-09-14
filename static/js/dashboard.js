@@ -67,14 +67,15 @@ async function loadDomainFilter() {
         data.forEach(item => {
             const opt = document.createElement("option");
             opt.value = item.domain_name;
-            opt.textContent = `${item.domain_name} (${item.google_ads_customer_id})`;
+            opt.textContent = `${item.domain_name} (Ads ID: ${item.google_ads_customer_id})`;
             selectFilter.appendChild(opt);
 
             if (selectSpendDomain) {
                 const optSpend = document.createElement("option");
                 optSpend.value = item.domain_name;
-                optSpend.textContent = `${item.domain_name} (Ads ID: ${item.google_ads_customer_id})`;
+                optSpend.textContent = `${item.domain_name} (MCC: ${item.mcc_id} | Ads: ${item.google_ads_customer_id})`;
                 optSpend.dataset.customerId = item.google_ads_customer_id;
+                optSpend.dataset.mccId = item.mcc_id;
                 selectSpendDomain.appendChild(optSpend);
             }
         });
@@ -279,7 +280,7 @@ async function fetchDailyDetails(query) {
         tbody.innerHTML = "";
 
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="11" class="py-6 text-center text-slate-400">Tidak ada data ditemukan untuk filter ini.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="12" class="py-6 text-center text-slate-400">Tidak ada data ditemukan untuk filter ini.</td></tr>`;
             return;
         }
 
@@ -297,6 +298,7 @@ async function fetchDailyDetails(query) {
             tr.innerHTML = `
                 <td class="py-3 px-4 font-mono text-slate-200">${item.date}</td>
                 <td class="py-3 px-4 font-semibold text-indigo-300">${item.domain}</td>
+                <td class="py-3 px-4 font-mono text-xs text-slate-400">${item.mcc_id || '-'}</td>
                 <td class="py-3 px-4 font-mono text-xs text-slate-400">${item.google_ads_customer_id}</td>
                 <td class="py-3 px-4">
                     <span class="px-2 py-0.5 rounded text-xs font-semibold border ${sourceBadgeClass}">
@@ -323,6 +325,13 @@ function openManualSpendModal() {
     document.getElementById("manual-spend-modal").classList.remove("hidden");
     const today = new Date().toISOString().split('T')[0];
     document.getElementById("spend-date").value = today;
+
+    const selectSpendDomain = document.getElementById("spend-domain");
+    if (selectSpendDomain && selectSpendDomain.selectedOptions.length > 0) {
+        const opt = selectSpendDomain.selectedOptions[0];
+        if (opt.dataset.customerId) document.getElementById("spend-customer-id").value = opt.dataset.customerId;
+        if (opt.dataset.mccId) document.getElementById("spend-mcc-id").value = opt.dataset.mccId;
+    }
 }
 
 function closeManualSpendModal() {
@@ -333,6 +342,7 @@ async function saveManualSpend(e) {
     e.preventDefault();
     const date = document.getElementById("spend-date").value;
     const domain = document.getElementById("spend-domain").value;
+    const mccId = document.getElementById("spend-mcc-id").value.trim();
     const customerId = document.getElementById("spend-customer-id").value.trim();
     const spend = parseFloat(document.getElementById("spend-amount").value) || 0;
     const clicks = parseInt(document.getElementById("spend-clicks").value) || 0;
@@ -345,6 +355,7 @@ async function saveManualSpend(e) {
             body: JSON.stringify({
                 date: date,
                 domain: domain,
+                mcc_id: mccId,
                 google_ads_customer_id: customerId,
                 spend: spend,
                 clicks: clicks,
@@ -397,6 +408,8 @@ async function fetchMappingList() {
                 <div>
                     <span class="font-bold text-indigo-300 text-xs">${m.domain_name}</span>
                     <span class="text-slate-500 mx-1.5">•</span>
+                    <span class="font-mono text-slate-400">MCC: ${m.mcc_id || '-'}</span>
+                    <span class="text-slate-500 mx-1">•</span>
                     <span class="font-mono text-slate-400">Ads ID: ${m.google_ads_customer_id}</span>
                 </div>
                 <span class="text-[10px] text-slate-500">${m.campaign_name || ''}</span>
@@ -411,6 +424,7 @@ async function fetchMappingList() {
 async function saveMapping(e) {
     e.preventDefault();
     const domainName = document.getElementById("map-domain-name").value.trim();
+    const mccId = document.getElementById("map-mcc-id").value.trim();
     const customerId = document.getElementById("map-customer-id").value.trim();
     const campaignName = document.getElementById("map-campaign-name").value.trim();
 
@@ -420,6 +434,7 @@ async function saveMapping(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 domain_name: domainName,
+                mcc_id: mccId,
                 google_ads_customer_id: customerId,
                 campaign_name: campaignName
             })

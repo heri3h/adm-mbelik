@@ -11,7 +11,8 @@ class DomainMapping(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     domain_name = db.Column(db.String(100), nullable=False, unique=True, index=True) # e.g. mbelik.com
-    google_ads_customer_id = db.Column(db.String(50), nullable=True)                 # e.g. 123-456-7890
+    mcc_id = db.Column(db.String(50), nullable=True)                                 # MCC ID / Manager Account ID (e.g. 123-456-7890)
+    google_ads_customer_id = db.Column(db.String(50), nullable=True)                 # Client Account ID (e.g. 987-654-3210)
     campaign_name = db.Column(db.String(100), nullable=True)                         # Nama Kampanye
     description = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=utc_now)
@@ -20,6 +21,7 @@ class DomainMapping(db.Model):
         return {
             "id": self.id,
             "domain_name": self.domain_name,
+            "mcc_id": self.mcc_id or "-",
             "google_ads_customer_id": self.google_ads_customer_id or "-",
             "campaign_name": self.campaign_name or "-",
             "description": self.description or ""
@@ -31,6 +33,7 @@ class ManualGoogleAdsSpend(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False, index=True)
     domain = db.Column(db.String(100), nullable=False, default='mbelik.com', index=True)
+    mcc_id = db.Column(db.String(50), nullable=True, default='-')
     google_ads_customer_id = db.Column(db.String(50), nullable=False, default='123-456-7890')
     spend = db.Column(db.Float, nullable=False, default=0.0) # Biaya Iklan (Rp)
     clicks = db.Column(db.Integer, nullable=False, default=0)
@@ -42,6 +45,7 @@ class ManualGoogleAdsSpend(db.Model):
             "id": self.id,
             "date": self.date.strftime('%Y-%m-%d'),
             "domain": self.domain,
+            "mcc_id": self.mcc_id or "-",
             "google_ads_customer_id": self.google_ads_customer_id,
             "spend": round(self.spend, 0),
             "clicks": self.clicks,
@@ -55,6 +59,7 @@ class DailyAdMetric(db.Model):
     date = db.Column(db.Date, nullable=False, index=True)
     domain = db.Column(db.String(100), nullable=False, default='mbelik.com', index=True) # Domain / Site Name
     source = db.Column(db.String(50), nullable=False, default='GAM')                      # GAM / Google Ads / Aggregated
+    mcc_id = db.Column(db.String(50), nullable=True)                                      # MCC ID (Manager Account ID)
     google_ads_customer_id = db.Column(db.String(50), nullable=True)                      # Customer ID Google Ads
     
     # Financial Metrics
@@ -92,6 +97,7 @@ class DailyAdMetric(db.Model):
             "date": self.date.strftime('%Y-%m-%d'),
             "domain": self.domain,
             "source": self.source,
+            "mcc_id": self.mcc_id or "-",
             "google_ads_customer_id": self.google_ads_customer_id or "-",
             "spend": round(self.spend, 0),
             "earning": round(self.revenue, 0),

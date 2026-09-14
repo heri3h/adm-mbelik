@@ -231,6 +231,7 @@
                         <tr>
                             <th class="py-3.5 px-4">Tanggal</th>
                             <th class="py-3.5 px-4">Domain</th>
+                            <th class="py-3.5 px-4">MCC ID</th>
                             <th class="py-3.5 px-4">Google Ads ID</th>
                             <th class="py-3.5 px-4">Sumber</th>
                             <th class="py-3.5 px-4 text-right">Spend (Rp)</th>
@@ -244,7 +245,7 @@
                     </thead>
                     <tbody id="table-body" class="divide-y divide-slate-700/50">
                         <tr>
-                            <td colspan="11" class="py-8 text-center text-slate-400">
+                            <td colspan="12" class="py-8 text-center text-slate-400">
                                 <i class="fa-solid fa-spinner fa-spin mr-2"></i> Memuat data tabel...
                             </td>
                         </tr>
@@ -280,9 +281,15 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Google Ads Customer ID</label>
-                    <input type="text" id="spend-customer-id" placeholder="Contoh: 123-456-7890" required class="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">MCC ID (Manager Account)</label>
+                        <input type="text" id="spend-mcc-id" placeholder="Contoh: 123-456-7890" class="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Google Ads Client ID</label>
+                        <input type="text" id="spend-customer-id" placeholder="Contoh: 987-654-3210" required class="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                    </div>
                 </div>
 
                 <div>
@@ -331,11 +338,17 @@
                     <input type="text" id="map-domain-name" required placeholder="Contoh: mbelik.com" class="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                 </div>
 
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Google Ads Customer ID (Manual Mapping)</label>
-                    <input type="text" id="map-customer-id" placeholder="Contoh: 123-456-7890" class="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    <p class="text-[11px] text-slate-500 mt-1">ID Akun Google Ads yang digunakan untuk mendanai lalu lintas domain ini.</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">MCC ID (Manager Account)</label>
+                        <input type="text" id="map-mcc-id" placeholder="Contoh: 123-456-7890" class="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Client Customer ID</label>
+                        <input type="text" id="map-customer-id" placeholder="Contoh: 987-654-3210" class="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
                 </div>
+                <p class="text-[11px] text-slate-500">MCC ID & Client ID Akun Google Ads yang digunakan untuk mendanai lalu lintas domain ini.</p>
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Nama Kampanye / Catatan (Opsional)</label>

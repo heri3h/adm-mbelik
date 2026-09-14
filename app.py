@@ -19,7 +19,8 @@ def seed_database_if_empty():
         if DomainMapping.query.count() == 0:
             db.session.add(DomainMapping(
                 domain_name='mbelik.com',
-                google_ads_customer_id='123-456-7890',
+                mcc_id='123-456-7890',
+                google_ads_customer_id='987-654-3210',
                 campaign_name='Kampanye Utama Mbelik',
                 description='Domain Utama'
             ))
@@ -40,6 +41,8 @@ def seed_database_if_empty():
                     conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN domain VARCHAR(100) DEFAULT 'mbelik.com'"))
                 if 'google_ads_customer_id' not in columns:
                     conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN google_ads_customer_id VARCHAR(50) DEFAULT '-'"))
+                if 'mcc_id' not in columns:
+                    conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN mcc_id VARCHAR(50) DEFAULT '-'"))
                 conn.commit()
         except Exception as e:
             print(f"[DB Migration Warning] {e}")
@@ -176,11 +179,12 @@ def api_status():
 
 @app.route('/api/domain-mappings', methods=['GET', 'POST'])
 def api_domain_mappings():
-    """Endpoint CRUD untuk mapping Domain GAM dengan Google Ads Customer ID."""
+    """Endpoint CRUD untuk mapping Domain GAM dengan MCC ID & Google Ads Customer ID."""
     if request.method == 'POST':
         try:
             data = request.get_json() or {}
             domain_name = data.get('domain_name', '').strip()
+            mcc_id = data.get('mcc_id', '').strip()
             customer_id = data.get('google_ads_customer_id', '').strip()
             campaign_name = data.get('campaign_name', '').strip()
             description = data.get('description', '').strip()
@@ -193,6 +197,7 @@ def api_domain_mappings():
                 existing = DomainMapping(domain_name=domain_name)
                 db.session.add(existing)
 
+            existing.mcc_id = mcc_id
             existing.google_ads_customer_id = customer_id
             existing.campaign_name = campaign_name
             existing.description = description
@@ -216,6 +221,7 @@ def api_manual_spend():
             data = request.get_json() or {}
             d_str = data.get('date', datetime.now().strftime('%Y-%m-%d')).strip()
             domain = data.get('domain', 'mbelik.com').strip()
+            mcc_id = data.get('mcc_id', '').strip()
             customer_id = data.get('google_ads_customer_id', '123-456-7890').strip()
             spend = float(data.get('spend', 0.0))
             clicks = int(data.get('clicks', 0))
@@ -228,6 +234,7 @@ def api_manual_spend():
                 existing = ManualGoogleAdsSpend(date=entry_date, domain=domain)
                 db.session.add(existing)
 
+            existing.mcc_id = mcc_id
             existing.google_ads_customer_id = customer_id
             existing.spend = spend
             existing.clicks = clicks

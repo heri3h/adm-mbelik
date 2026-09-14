@@ -23,9 +23,10 @@ class Config:
     GAM_NETWORK_CODE = os.getenv("GAM_NETWORK_CODE", "")
     GAM_APPLICATION_NAME = os.getenv("GAM_APPLICATION_NAME", "AdManagerDashboard")
 
-    # Google Ads
+    # Google Ads Configuration
     GOOGLE_ADS_DEVELOPER_TOKEN = os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN", "")
-    GOOGLE_ADS_CUSTOMER_ID = os.getenv("GOOGLE_ADS_CUSTOMER_ID", "")
+    GOOGLE_ADS_LOGIN_CUSTOMER_ID = os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "") # MCC ID (Manager Account ID)
+    GOOGLE_ADS_CUSTOMER_ID = os.getenv("GOOGLE_ADS_CUSTOMER_ID", "")             # Client Account ID
 
     # Flag mode Mock
     USE_MOCK_DATA = os.getenv("USE_MOCK_DATA", "True").lower() in ["true", "1", "t"]

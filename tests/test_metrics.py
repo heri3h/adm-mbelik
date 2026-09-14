@@ -102,3 +102,23 @@ def test_period_filters_today_and_yesterday(client):
     assert data_custom["total_spend"] == 70.0
     assert data_custom["total_earning"] == 170.0
     assert data_custom["total_profit"] == 100.0
+
+def test_domain_mapping_and_mcc_id(client):
+    """Menguji pembuatan domain mapping dengan MCC ID dan Google Ads Customer ID."""
+    login_client(client)
+    res = client.post('/api/domain-mappings', json={
+        'domain_name': 'testdomain.com',
+        'mcc_id': '111-222-3333',
+        'google_ads_customer_id': '444-555-6666',
+        'campaign_name': 'Test Campaign'
+    })
+    assert res.status_code == 200
+    assert res.get_json()['success'] is True
+
+    res_list = client.get('/api/domain-mappings')
+    assert res_list.status_code == 200
+    mappings = res_list.get_json()
+    found = [m for m in mappings if m['domain_name'] == 'testdomain.com']
+    assert len(found) == 1
+    assert found[0]['mcc_id'] == '111-222-3333'
+    assert found[0]['google_ads_customer_id'] == '444-555-6666'
