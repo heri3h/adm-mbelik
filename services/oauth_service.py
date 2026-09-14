@@ -3,10 +3,13 @@ import google_auth_oauthlib.flow
 from google.oauth2.credentials import Credentials
 from config import Config
 
+# Ijinkan relax token scope jika Google mengarahkan alias scope (dfp -> admanager)
+os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
+
 # Scopes yang dibutuhkan untuk Google Ad Manager & Google Ads
 SCOPES = [
-    'https://www.googleapis.com/auth/dfp',              # GAM API Scope
-    'https://www.googleapis.com/auth/adwords'            # Google Ads API Scope
+    'https://www.googleapis.com/auth/admanager',           # GAM API Scope
+    'https://www.googleapis.com/auth/adwords'              # Google Ads API Scope
 ]
 
 def get_google_oauth_flow():
