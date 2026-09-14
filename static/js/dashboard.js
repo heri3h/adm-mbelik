@@ -52,6 +52,10 @@ function buildQueryParams() {
 async function checkStatus() {
     try {
         const res = await fetch("/api/status");
+        if (res.status === 401) {
+            window.location.href = "/login";
+            return;
+        }
         const data = await res.json();
         const badge = document.getElementById("mode-badge");
         const text = document.getElementById("mode-text");
@@ -82,6 +86,10 @@ async function loadDashboardData() {
 async function fetchSummary(query) {
     try {
         const res = await fetch(`/api/summary?${query}`);
+        if (res.status === 401) {
+            window.location.href = "/login";
+            return;
+        }
         const data = await res.json();
         const s = data.summary;
 
@@ -115,6 +123,10 @@ async function fetchSummary(query) {
 async function fetchTimeseries(query) {
     try {
         const res = await fetch(`/api/timeseries?${query}`);
+        if (res.status === 401) {
+            window.location.href = "/login";
+            return;
+        }
         const data = await res.json();
         renderCharts(data);
     } catch (err) {
@@ -126,7 +138,6 @@ function renderCharts(data) {
     if (chartFinancial) chartFinancial.destroy();
     if (chartRoiCtr) chartRoiCtr.destroy();
 
-    // Chart 1: Earning, Spend, Profit dalam Rupiah
     const ctx1 = document.getElementById("chart-financial").getContext("2d");
     chartFinancial = new Chart(ctx1, {
         type: "line",
@@ -136,7 +147,7 @@ function renderCharts(data) {
                 {
                     label: "Earning (Rp)",
                     data: data.earnings,
-                    borderColor: "#10b981", // Emerald 500
+                    borderColor: "#10b981",
                     backgroundColor: "rgba(16, 185, 129, 0.1)",
                     borderWidth: 2,
                     fill: true,
@@ -145,7 +156,7 @@ function renderCharts(data) {
                 {
                     label: "Spend (Rp)",
                     data: data.spends,
-                    borderColor: "#f43f5e", // Rose 500
+                    borderColor: "#f43f5e",
                     backgroundColor: "rgba(244, 63, 94, 0.1)",
                     borderWidth: 2,
                     fill: true,
@@ -154,7 +165,7 @@ function renderCharts(data) {
                 {
                     label: "Profit (Rp)",
                     data: data.profits,
-                    borderColor: "#06b6d4", // Cyan 500
+                    borderColor: "#06b6d4",
                     backgroundColor: "rgba(6, 182, 212, 0.05)",
                     borderWidth: 2,
                     borderDash: [4, 4],
@@ -183,7 +194,6 @@ function renderCharts(data) {
         }
     });
 
-    // Chart 2: ROI (%) & CTR (%)
     const ctx2 = document.getElementById("chart-roi-ctr").getContext("2d");
     chartRoiCtr = new Chart(ctx2, {
         type: "line",
@@ -193,7 +203,7 @@ function renderCharts(data) {
                 {
                     label: "ROI (%)",
                     data: data.rois,
-                    borderColor: "#6366f1", // Indigo 500
+                    borderColor: "#6366f1",
                     backgroundColor: "rgba(99, 102, 241, 0.1)",
                     borderWidth: 2,
                     fill: true,
@@ -203,7 +213,7 @@ function renderCharts(data) {
                 {
                     label: "CTR (%)",
                     data: data.ctrs,
-                    borderColor: "#f59e0b", // Amber 500
+                    borderColor: "#f59e0b",
                     backgroundColor: "rgba(245, 158, 11, 0.1)",
                     borderWidth: 2,
                     fill: false,
@@ -241,6 +251,10 @@ function renderCharts(data) {
 async function fetchDailyDetails(query) {
     try {
         const res = await fetch(`/api/daily-details?${query}`);
+        if (res.status === 401) {
+            window.location.href = "/login";
+            return;
+        }
         const data = await res.json();
 
         const tbody = document.getElementById("table-body");
@@ -298,14 +312,22 @@ async function syncData() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ days: days })
         });
+
+        if (res.status === 401) {
+            window.location.href = "/login";
+            return;
+        }
+
         const data = await res.json();
         if (data.success) {
             await loadDashboardData();
         } else {
-            alert("Sinkronisasi gagal: " + data.error);
+            alert("Sinkronisasi gagal: " + (data.error || "Gagal sinkronisasi data."));
         }
     } catch (err) {
-        alert("Error menghubungi server untuk sinkronisasi.");
+        console.error("Sync error:", err);
+        alert("Sesi login telah berakhir atau jaringan terputus. Mengalihkan ke halaman login...");
+        window.location.href = "/login";
     } finally {
         icon.classList.remove("fa-spin");
     }

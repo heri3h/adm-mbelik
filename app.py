@@ -103,6 +103,9 @@ def require_login_check():
     if request.endpoint in allowed_routes or session.get('logged_in'):
         return None
     
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Sesi login telah berakhir. Silakan login kembali.", "login_required": True}), 401
+
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
