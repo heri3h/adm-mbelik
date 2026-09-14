@@ -57,19 +57,30 @@ async function loadDomainFilter() {
         if (res.status === 401) { window.location.href = "/login"; return; }
         const data = await res.json();
         
-        const select = document.getElementById("filter-domain");
-        const currentVal = select.value;
-        select.innerHTML = '<option value="All">Semua Domain</option>';
+        const selectFilter = document.getElementById("filter-domain");
+        const selectSpendDomain = document.getElementById("spend-domain");
+
+        const currentVal = selectFilter.value;
+        selectFilter.innerHTML = '<option value="All">Semua Domain</option>';
+        if (selectSpendDomain) selectSpendDomain.innerHTML = '';
 
         data.forEach(item => {
             const opt = document.createElement("option");
             opt.value = item.domain_name;
             opt.textContent = `${item.domain_name} (${item.google_ads_customer_id})`;
-            select.appendChild(opt);
+            selectFilter.appendChild(opt);
+
+            if (selectSpendDomain) {
+                const optSpend = document.createElement("option");
+                optSpend.value = item.domain_name;
+                optSpend.textContent = `${item.domain_name} (Ads ID: ${item.google_ads_customer_id})`;
+                optSpend.dataset.customerId = item.google_ads_customer_id;
+                selectSpendDomain.appendChild(optSpend);
+            }
         });
 
-        if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
-            select.value = currentVal;
+        if (currentVal && Array.from(selectFilter.options).some(o => o.value === currentVal)) {
+            selectFilter.value = currentVal;
         }
     } catch (err) {
         console.error("Error loading domain filter:", err);
@@ -304,6 +315,55 @@ async function fetchDailyDetails(query) {
         });
     } catch (err) {
         console.error("Error fetching table details:", err);
+    }
+}
+
+// Modal Manual Spend Functions
+function openManualSpendModal() {
+    document.getElementById("manual-spend-modal").classList.remove("hidden");
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById("spend-date").value = today;
+}
+
+function closeManualSpendModal() {
+    document.getElementById("manual-spend-modal").classList.add("hidden");
+}
+
+async function saveManualSpend(e) {
+    e.preventDefault();
+    const date = document.getElementById("spend-date").value;
+    const domain = document.getElementById("spend-domain").value;
+    const customerId = document.getElementById("spend-customer-id").value.trim();
+    const spend = parseFloat(document.getElementById("spend-amount").value) || 0;
+    const clicks = parseInt(document.getElementById("spend-clicks").value) || 0;
+    const impressions = parseInt(document.getElementById("spend-impressions").value) || 0;
+
+    try {
+        const res = await fetch('/api/manual-spend', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                date: date,
+                domain: domain,
+                google_ads_customer_id: customerId,
+                spend: spend,
+                clicks: clicks,
+                impressions: impressions
+            })
+        });
+
+        if (res.status === 401) { window.location.href = "/login"; return; }
+        const data = await res.json();
+
+        if (data.success) {
+            alert(data.message);
+            closeManualSpendModal();
+            await loadDashboardData();
+        } else {
+            alert("Gagal menyimpan Spend: " + data.error);
+        }
+    } catch (err) {
+        alert("Error menghubungi server untuk menyimpan Spend.");
     }
 }
 

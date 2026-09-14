@@ -25,6 +25,29 @@ class DomainMapping(db.Model):
             "description": self.description or ""
         }
 
+class ManualGoogleAdsSpend(db.Model):
+    __tablename__ = 'manual_google_ads_spends'
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, index=True)
+    domain = db.Column(db.String(100), nullable=False, default='mbelik.com', index=True)
+    google_ads_customer_id = db.Column(db.String(50), nullable=False, default='123-456-7890')
+    spend = db.Column(db.Float, nullable=False, default=0.0) # Biaya Iklan (Rp)
+    clicks = db.Column(db.Integer, nullable=False, default=0)
+    impressions = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=utc_now)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "date": self.date.strftime('%Y-%m-%d'),
+            "domain": self.domain,
+            "google_ads_customer_id": self.google_ads_customer_id,
+            "spend": round(self.spend, 0),
+            "clicks": self.clicks,
+            "impressions": self.impressions
+        }
+
 class DailyAdMetric(db.Model):
     __tablename__ = 'daily_ad_metrics'
 

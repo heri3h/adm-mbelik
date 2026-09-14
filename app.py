@@ -1,7 +1,7 @@
 from flask import Flask, render_template, jsonify, request, redirect, session, url_for
 from datetime import datetime, timedelta
 from config import Config
-from models import db, DailyAdMetric, DomainMapping
+from models import db, DailyAdMetric, DomainMapping, ManualGoogleAdsSpend
 from services.gam_service import GAMService
 from services.google_ads_service import GoogleAdsService
 from services.oauth_service import get_authorization_url, get_credentials_from_code
@@ -207,6 +207,42 @@ def api_domain_mappings():
     else:
         mappings = DomainMapping.query.all()
         return jsonify([m.to_dict() for m in mappings])
+
+@app.route('/api/manual-spend', methods=['GET', 'POST'])
+def api_manual_spend():
+    """Endpoint untuk memasukkan biaya iklan Google Ads secara manual."""
+    if request.method == 'POST':
+        try:
+            data = request.get_json() or {}
+            d_str = data.get('date', datetime.now().strftime('%Y-%m-%d')).strip()
+            domain = data.get('domain', 'mbelik.com').strip()
+            customer_id = data.get('google_ads_customer_id', '123-456-7890').strip()
+            spend = float(data.get('spend', 0.0))
+            clicks = int(data.get('clicks', 0))
+            impressions = int(data.get('impressions', 0))
+
+            entry_date = datetime.strptime(d_str, '%Y-%m-%d').date()
+
+            existing = ManualGoogleAdsSpend.query.filter_by(date=entry_date, domain=domain).first()
+            if not existing:
+                existing = ManualGoogleAdsSpend(date=entry_date, domain=domain)
+                db.session.add(existing)
+
+            existing.google_ads_customer_id = customer_id
+            existing.spend = spend
+            existing.clicks = clicks
+            existing.impressions = impressions
+            db.session.commit()
+
+            # Trigger sync data otomatis agar dashboard langsung terupdate
+            sync_data_internal(days=30)
+
+            return jsonify({"success": True, "message": f"Berhasil menyimpan Spend manual Rp {spend:,.0f} untuk {domain} pada tanggal {d_str}."})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    else:
+        entries = ManualGoogleAdsSpend.query.order_by(ManualGoogleAdsSpend.date.desc()).all()
+        return jsonify([e.to_dict() for e in entries])
 
 @app.route('/api/sync', methods=['POST'])
 def api_sync():
