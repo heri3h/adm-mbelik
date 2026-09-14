@@ -1,7 +1,7 @@
 from flask import Flask, render_template, jsonify, request, redirect, session, url_for
 from datetime import datetime, timedelta
 from config import Config
-from models import db, DailyAdMetric
+from models import db, DailyAdMetric, DomainMapping
 from services.gam_service import GAMService
 from services.google_ads_service import GoogleAdsService
 from services.oauth_service import get_authorization_url, get_credentials_from_code
@@ -11,9 +11,20 @@ app.config.from_object(Config)
 db.init_app(app)
 
 def seed_database_if_empty():
-    """Mengisi database awal dengan data mock dan migrasi kolom baru SQLite."""
+    """Mengisi database awal dengan data mock dan migrasi tabel DomainMapping."""
     with app.app_context():
         db.create_all()
+
+        # Seed default DomainMapping jika belum ada
+        if DomainMapping.query.count() == 0:
+            db.session.add(DomainMapping(
+                domain_name='mbelik.com',
+                google_ads_customer_id='123-456-7890',
+                campaign_name='Kampanye Utama Mbelik',
+                description='Domain Utama'
+            ))
+            db.session.commit()
+
         # Migrasi kolom otomatis untuk SQLite jika kolom baru belum ada
         try:
             inspector = db.inspect(db.engine)
@@ -25,6 +36,10 @@ def seed_database_if_empty():
                     conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN profit FLOAT DEFAULT 0.0"))
                 if 'roi' not in columns:
                     conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN roi FLOAT DEFAULT 0.0"))
+                if 'domain' not in columns:
+                    conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN domain VARCHAR(100) DEFAULT 'mbelik.com'"))
+                if 'google_ads_customer_id' not in columns:
+                    conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN google_ads_customer_id VARCHAR(50) DEFAULT '-'"))
                 conn.commit()
         except Exception as e:
             print(f"[DB Migration Warning] {e}")
@@ -34,27 +49,40 @@ def seed_database_if_empty():
             sync_data_internal(days=30)
 
 def sync_data_internal(days=30):
-    """Fungsi internal untuk menarik data dari GAM & Google Ads ke database SQLite."""
+    """Fungsi internal untuk menarik data dari GAM & Google Ads ke database SQLite per Domain."""
     end_date = datetime.now().date()
     start_date = end_date - timedelta(days=days)
 
     gam_service = GAMService()
     gads_service = GoogleAdsService()
 
-    gam_records = gam_service.fetch_daily_report(start_date, end_date)
-    gads_records = gads_service.fetch_daily_report(start_date, end_date)
+    mappings = DomainMapping.query.all()
+    if not mappings:
+        mappings = [DomainMapping(domain_name='mbelik.com', google_ads_customer_id='123-456-7890')]
 
-    all_records = gam_records + gads_records
+    all_records = []
+    for m in mappings:
+        gam_records = gam_service.fetch_daily_report(start_date, end_date, domain=m.domain_name)
+        gads_records = gads_service.fetch_daily_report(start_date, end_date, domain=m.domain_name, customer_id=m.google_ads_customer_id)
+        all_records.extend(gam_records + gads_records)
 
     for rec in all_records:
-        existing = DailyAdMetric.query.filter_by(date=rec['date'], source=rec['source']).first()
+        existing = DailyAdMetric.query.filter_by(
+            date=rec['date'], 
+            source=rec['source'], 
+            domain=rec['domain']
+        ).first()
+
         if not existing:
             existing = DailyAdMetric(
                 date=rec['date'],
-                source=rec['source']
+                domain=rec['domain'],
+                source=rec['source'],
+                google_ads_customer_id=rec.get('google_ads_customer_id', '-')
             )
             db.session.add(existing)
 
+        existing.google_ads_customer_id = rec.get('google_ads_customer_id', '-')
         existing.spend = rec.get('spend', 0.0)
         existing.revenue = rec.get('revenue', 0.0)
         existing.impressions = rec.get('impressions', 0)
@@ -64,7 +92,7 @@ def sync_data_internal(days=30):
         existing.calculate_derived_metrics()
 
     db.session.commit()
-    print(f"[DB Sync] Berhasil memperbarui {len(all_records)} catatan metrik iklan.")
+    print(f"[DB Sync] Berhasil menyinkronkan {len(all_records)} catatan metrik iklan.")
 
 def get_date_range_from_request(req):
     """Mendapatkan tanggal mulai dan selesai dari parameter request."""
@@ -146,6 +174,40 @@ def api_status():
         "gam_network_code": Config.GAM_NETWORK_CODE or "Belum Diatur"
     })
 
+@app.route('/api/domain-mappings', methods=['GET', 'POST'])
+def api_domain_mappings():
+    """Endpoint CRUD untuk mapping Domain GAM dengan Google Ads Customer ID."""
+    if request.method == 'POST':
+        try:
+            data = request.get_json() or {}
+            domain_name = data.get('domain_name', '').strip()
+            customer_id = data.get('google_ads_customer_id', '').strip()
+            campaign_name = data.get('campaign_name', '').strip()
+            description = data.get('description', '').strip()
+
+            if not domain_name:
+                return jsonify({"success": False, "error": "Nama domain wajib diisi."}), 400
+
+            existing = DomainMapping.query.filter_by(domain_name=domain_name).first()
+            if not existing:
+                existing = DomainMapping(domain_name=domain_name)
+                db.session.add(existing)
+
+            existing.google_ads_customer_id = customer_id
+            existing.campaign_name = campaign_name
+            existing.description = description
+            db.session.commit()
+
+            # Trigger auto sync data untuk domain baru
+            sync_data_internal(days=30)
+
+            return jsonify({"success": True, "message": f"Berhasil menyimpan mapping domain {domain_name}."})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+    else:
+        mappings = DomainMapping.query.all()
+        return jsonify([m.to_dict() for m in mappings])
+
 @app.route('/api/sync', methods=['POST'])
 def api_sync():
     try:
@@ -163,11 +225,14 @@ def api_summary():
 
     start_date, end_date = get_date_range_from_request(request)
     source = request.args.get('source', 'All')
+    domain = request.args.get('domain', 'All')
 
     query = DailyAdMetric.query.filter(DailyAdMetric.date >= start_date, DailyAdMetric.date <= end_date)
 
     if source != 'All':
         query = query.filter_by(source=source)
+    if domain != 'All':
+        query = query.filter_by(domain=domain)
 
     metrics = query.all()
     if not metrics:
@@ -186,16 +251,17 @@ def api_summary():
 
     avg_ctr = round((total_clicks / total_impressions * 100), 2) if total_impressions > 0 else 0.0
     avg_fill_rate = round((total_matched_requests / total_ad_requests * 100), 2) if total_ad_requests > 0 else 0.0
-    avg_rpm = round((total_earning / total_impressions * 1000), 2) if total_impressions > 0 else 0.0
+    avg_rpm = round((total_earning / total_impressions * 1000), 0) if total_impressions > 0 else 0.0
 
     return jsonify({
         "start_date": start_date.strftime('%Y-%m-%d'),
         "end_date": end_date.strftime('%Y-%m-%d'),
         "source_filter": source,
+        "domain_filter": domain,
         "summary": {
-            "total_spend": round(total_spend, 2),
-            "total_earning": round(total_earning, 2),
-            "total_profit": round(total_profit, 2),
+            "total_spend": round(total_spend, 0),
+            "total_earning": round(total_earning, 0),
+            "total_profit": round(total_profit, 0),
             "total_roi": total_roi,
             "total_impressions": total_impressions,
             "total_clicks": total_clicks,
@@ -214,11 +280,14 @@ def api_timeseries():
 
     start_date, end_date = get_date_range_from_request(request)
     source = request.args.get('source', 'All')
+    domain = request.args.get('domain', 'All')
 
     query = DailyAdMetric.query.filter(DailyAdMetric.date >= start_date, DailyAdMetric.date <= end_date)
 
     if source != 'All':
         query = query.filter_by(source=source)
+    if domain != 'All':
+        query = query.filter_by(domain=domain)
 
     metrics = query.order_by(DailyAdMetric.date.asc()).all()
     if not metrics:
@@ -267,11 +336,11 @@ def api_timeseries():
 
         ctr = round((clk / imp * 100), 2) if imp > 0 else 0.0
         fill = round((mat / req * 100), 2) if req > 0 else 0.0
-        rpm = round((rev / imp * 1000), 2) if imp > 0 else 0.0
+        rpm = round((rev / imp * 1000), 0) if imp > 0 else 0.0
 
-        spends.append(round(sp, 2))
-        earnings.append(round(rev, 2))
-        profits.append(round(prof, 2))
+        spends.append(round(sp, 0))
+        earnings.append(round(rev, 0))
+        profits.append(round(prof, 0))
         rois.append(roi)
         impressions.append(imp)
         ctrs.append(ctr)
@@ -297,11 +366,14 @@ def api_daily_details():
 
     start_date, end_date = get_date_range_from_request(request)
     source = request.args.get('source', 'All')
+    domain = request.args.get('domain', 'All')
 
     query = DailyAdMetric.query.filter(DailyAdMetric.date >= start_date, DailyAdMetric.date <= end_date)
 
     if source != 'All':
         query = query.filter_by(source=source)
+    if domain != 'All':
+        query = query.filter_by(domain=domain)
 
     metrics = query.order_by(DailyAdMetric.date.desc(), DailyAdMetric.source.asc()).all()
     if not metrics:

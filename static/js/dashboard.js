@@ -3,6 +3,7 @@ let chartRoiCtr = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     checkStatus();
+    loadDomainFilter();
     loadDashboardData();
 });
 
@@ -37,7 +38,8 @@ function handlePeriodChange() {
 function buildQueryParams() {
     const period = document.getElementById("filter-period").value;
     const source = document.getElementById("filter-source").value;
-    let query = `period=${period}&source=${source}`;
+    const domain = document.getElementById("filter-domain").value;
+    let query = `period=${period}&source=${source}&domain=${domain}`;
 
     if (period === "custom") {
         const sDate = document.getElementById("custom-start-date").value;
@@ -49,13 +51,35 @@ function buildQueryParams() {
     return query;
 }
 
+async function loadDomainFilter() {
+    try {
+        const res = await fetch('/api/domain-mappings');
+        if (res.status === 401) { window.location.href = "/login"; return; }
+        const data = await res.json();
+        
+        const select = document.getElementById("filter-domain");
+        const currentVal = select.value;
+        select.innerHTML = '<option value="All">Semua Domain</option>';
+
+        data.forEach(item => {
+            const opt = document.createElement("option");
+            opt.value = item.domain_name;
+            opt.textContent = `${item.domain_name} (${item.google_ads_customer_id})`;
+            select.appendChild(opt);
+        });
+
+        if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
+            select.value = currentVal;
+        }
+    } catch (err) {
+        console.error("Error loading domain filter:", err);
+    }
+}
+
 async function checkStatus() {
     try {
         const res = await fetch("/api/status");
-        if (res.status === 401) {
-            window.location.href = "/login";
-            return;
-        }
+        if (res.status === 401) { window.location.href = "/login"; return; }
         const data = await res.json();
         const badge = document.getElementById("mode-badge");
         const text = document.getElementById("mode-text");
@@ -86,10 +110,7 @@ async function loadDashboardData() {
 async function fetchSummary(query) {
     try {
         const res = await fetch(`/api/summary?${query}`);
-        if (res.status === 401) {
-            window.location.href = "/login";
-            return;
-        }
+        if (res.status === 401) { window.location.href = "/login"; return; }
         const data = await res.json();
         const s = data.summary;
 
@@ -98,19 +119,11 @@ async function fetchSummary(query) {
         
         const profitEl = document.getElementById("card-profit");
         profitEl.textContent = formatRupiah(s.total_profit);
-        if (s.total_profit < 0) {
-            profitEl.className = "text-2xl font-bold text-rose-400 mt-2";
-        } else {
-            profitEl.className = "text-2xl font-bold text-cyan-400 mt-2";
-        }
+        profitEl.className = s.total_profit < 0 ? "text-2xl font-bold text-rose-400 mt-2" : "text-2xl font-bold text-cyan-400 mt-2";
 
         const roiEl = document.getElementById("card-roi");
         roiEl.textContent = `${s.total_roi}%`;
-        if (s.total_roi < 0) {
-            roiEl.className = "text-2xl font-bold text-rose-400 mt-2";
-        } else {
-            roiEl.className = "text-2xl font-bold text-indigo-400 mt-2";
-        }
+        roiEl.className = s.total_roi < 0 ? "text-2xl font-bold text-rose-400 mt-2" : "text-2xl font-bold text-indigo-400 mt-2";
 
         document.getElementById("card-impressions").textContent = s.total_impressions.toLocaleString('id-ID');
         document.getElementById("card-ctr").textContent = `${s.avg_ctr}%`;
@@ -123,10 +136,7 @@ async function fetchSummary(query) {
 async function fetchTimeseries(query) {
     try {
         const res = await fetch(`/api/timeseries?${query}`);
-        if (res.status === 401) {
-            window.location.href = "/login";
-            return;
-        }
+        if (res.status === 401) { window.location.href = "/login"; return; }
         const data = await res.json();
         renderCharts(data);
     } catch (err) {
@@ -251,10 +261,7 @@ function renderCharts(data) {
 async function fetchDailyDetails(query) {
     try {
         const res = await fetch(`/api/daily-details?${query}`);
-        if (res.status === 401) {
-            window.location.href = "/login";
-            return;
-        }
+        if (res.status === 401) { window.location.href = "/login"; return; }
         const data = await res.json();
 
         const tbody = document.getElementById("table-body");
@@ -278,6 +285,8 @@ async function fetchDailyDetails(query) {
 
             tr.innerHTML = `
                 <td class="py-3 px-4 font-mono text-slate-200">${item.date}</td>
+                <td class="py-3 px-4 font-semibold text-indigo-300">${item.domain}</td>
+                <td class="py-3 px-4 font-mono text-xs text-slate-400">${item.google_ads_customer_id}</td>
                 <td class="py-3 px-4">
                     <span class="px-2 py-0.5 rounded text-xs font-semibold border ${sourceBadgeClass}">
                         ${item.source}
@@ -288,15 +297,88 @@ async function fetchDailyDetails(query) {
                 <td class="py-3 px-4 text-right ${profitClass}">${formatRupiah(item.profit)}</td>
                 <td class="py-3 px-4 text-right ${roiClass}">${item.roi}%</td>
                 <td class="py-3 px-4 text-right">${item.impressions.toLocaleString('id-ID')}</td>
-                <td class="py-3 px-4 text-right">${item.clicks.toLocaleString('id-ID')}</td>
                 <td class="py-3 px-4 text-right font-medium text-amber-400">${item.ctr}%</td>
                 <td class="py-3 px-4 text-right font-medium text-purple-400">${item.fill_rate}%</td>
-                <td class="py-3 px-4 text-right font-medium text-cyan-400">${formatRupiah(item.rpm)}</td>
             `;
             tbody.appendChild(tr);
         });
     } catch (err) {
         console.error("Error fetching table details:", err);
+    }
+}
+
+// Modal Mapping Functions
+function openMappingModal() {
+    document.getElementById("mapping-modal").classList.remove("hidden");
+    fetchMappingList();
+}
+
+function closeMappingModal() {
+    document.getElementById("mapping-modal").classList.add("hidden");
+}
+
+async function fetchMappingList() {
+    try {
+        const res = await fetch('/api/domain-mappings');
+        if (res.status === 401) { window.location.href = "/login"; return; }
+        const data = await res.json();
+        const listDiv = document.getElementById("mapping-list");
+        listDiv.innerHTML = "";
+
+        if (data.length === 0) {
+            listDiv.innerHTML = '<p class="text-slate-500">Belum ada mapping domain.</p>';
+            return;
+        }
+
+        data.forEach(m => {
+            const div = document.createElement("div");
+            div.className = "bg-slate-900 border border-slate-700/80 p-2.5 rounded-xl flex justify-between items-center";
+            div.innerHTML = `
+                <div>
+                    <span class="font-bold text-indigo-300 text-xs">${m.domain_name}</span>
+                    <span class="text-slate-500 mx-1.5">•</span>
+                    <span class="font-mono text-slate-400">Ads ID: ${m.google_ads_customer_id}</span>
+                </div>
+                <span class="text-[10px] text-slate-500">${m.campaign_name || ''}</span>
+            `;
+            listDiv.appendChild(div);
+        });
+    } catch (err) {
+        console.error("Error fetching mapping list:", err);
+    }
+}
+
+async function saveMapping(e) {
+    e.preventDefault();
+    const domainName = document.getElementById("map-domain-name").value.trim();
+    const customerId = document.getElementById("map-customer-id").value.trim();
+    const campaignName = document.getElementById("map-campaign-name").value.trim();
+
+    try {
+        const res = await fetch('/api/domain-mappings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                domain_name: domainName,
+                google_ads_customer_id: customerId,
+                campaign_name: campaignName
+            })
+        });
+
+        if (res.status === 401) { window.location.href = "/login"; return; }
+        const data = await res.json();
+
+        if (data.success) {
+            alert(data.message);
+            document.getElementById("form-mapping").reset();
+            await loadDomainFilter();
+            await fetchMappingList();
+            await loadDashboardData();
+        } else {
+            alert("Gagal menyimpan: " + data.error);
+        }
+    } catch (err) {
+        alert("Error menghubungi server untuk menyimpan mapping.");
     }
 }
 
@@ -313,20 +395,15 @@ async function syncData() {
             body: JSON.stringify({ days: days })
         });
 
-        if (res.status === 401) {
-            window.location.href = "/login";
-            return;
-        }
-
+        if (res.status === 401) { window.location.href = "/login"; return; }
         const data = await res.json();
         if (data.success) {
             await loadDashboardData();
         } else {
-            alert("Sinkronisasi gagal: " + (data.error || "Gagal sinkronisasi data."));
+            alert("Sinkronisasi gagal: " + (data.error || "Gagal sinkronisasi."));
         }
     } catch (err) {
         console.error("Sync error:", err);
-        alert("Sesi login telah berakhir atau jaringan terputus. Mengalihkan ke halaman login...");
         window.location.href = "/login";
     } finally {
         icon.classList.remove("fa-spin");
