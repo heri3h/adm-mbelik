@@ -11,9 +11,24 @@ app.config.from_object(Config)
 db.init_app(app)
 
 def seed_database_if_empty():
-    """Mengisi database awal dengan data mock jika database masih kosong."""
+    """Mengisi database awal dengan data mock dan migrasi kolom baru SQLite."""
     with app.app_context():
         db.create_all()
+        # Migrasi kolom otomatis untuk SQLite jika kolom baru belum ada
+        try:
+            inspector = db.inspect(db.engine)
+            columns = [c['name'] for c in inspector.get_columns('daily_ad_metrics')]
+            with db.engine.connect() as conn:
+                if 'spend' not in columns:
+                    conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN spend FLOAT DEFAULT 0.0"))
+                if 'profit' not in columns:
+                    conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN profit FLOAT DEFAULT 0.0"))
+                if 'roi' not in columns:
+                    conn.execute(db.text("ALTER TABLE daily_ad_metrics ADD COLUMN roi FLOAT DEFAULT 0.0"))
+                conn.commit()
+        except Exception as e:
+            print(f"[DB Migration Warning] {e}")
+
         if DailyAdMetric.query.count() == 0:
             print("[DB Seed] Memulai sinkronisasi data awal ke SQLite...")
             sync_data_internal(days=30)
