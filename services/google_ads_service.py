@@ -30,7 +30,7 @@ class GoogleAdsService:
         raise NotImplementedError("Silakan sesuaikan kredensial Google Ads API di file .env")
 
     def _generate_mock_data(self, start_date, end_date):
-        """Generasi data simulasi Google Ads."""
+        """Generasi data simulasi Google Ads dalam Rupiah (IDR)."""
         results = []
         current_date = start_date
         random.seed(99)
@@ -40,8 +40,10 @@ class GoogleAdsService:
             matched_requests = int(base_requests * random.uniform(0.85, 0.95))
             impressions = int(matched_requests * random.uniform(0.90, 0.98))
             clicks = int(impressions * random.uniform(0.015, 0.035))
-            revenue = round((impressions / 1000.0) * random.uniform(1.20, 2.50), 2)
-            spend = round(revenue * random.uniform(0.40, 0.70), 2)
+            
+            # Nominal dalam Rupiah (Rp)
+            revenue = round((impressions / 1000.0) * random.uniform(20000, 42000), 0)
+            spend = round(revenue * random.uniform(0.40, 0.70), 0)
 
             results.append({
                 "date": current_date,

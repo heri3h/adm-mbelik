@@ -26,7 +26,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white">Ad Profit & ROI Monitor</h1>
-                    <p class="text-xs text-slate-400">Google Ad Manager (GAM) & Google Ads Unified Analytics</p>
+                    <p class="text-xs text-slate-400">Google Ad Manager (GAM) & Google Ads Unified Analytics (Mata Uang: IDR / Rp)</p>
                 </div>
             </div>
 
@@ -71,7 +71,7 @@
                     <option value="custom">Opsi Custom Tanggal</option>
                 </select>
 
-                <!-- Container Input Custom Date Range (Sembunyi secara default) -->
+                <!-- Container Input Custom Date Range -->
                 <div id="custom-date-container" class="hidden flex items-center gap-2">
                     <input type="date" id="custom-start-date" onchange="loadDashboardData()" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                     <span class="text-xs text-slate-500">s/d</span>
@@ -98,7 +98,7 @@
                 <div class="flex justify-between items-start">
                     <div>
                         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Spend</p>
-                        <h3 id="card-spend" class="text-2xl font-bold text-rose-400 mt-2">$0.00</h3>
+                        <h3 id="card-spend" class="text-2xl font-bold text-rose-400 mt-2">Rp 0</h3>
                     </div>
                     <div class="p-3 bg-rose-500/10 text-rose-400 rounded-lg">
                         <i class="fa-solid fa-wallet text-lg"></i>
@@ -112,7 +112,7 @@
                 <div class="flex justify-between items-start">
                     <div>
                         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Earning</p>
-                        <h3 id="card-earning" class="text-2xl font-bold text-emerald-400 mt-2">$0.00</h3>
+                        <h3 id="card-earning" class="text-2xl font-bold text-emerald-400 mt-2">Rp 0</h3>
                     </div>
                     <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg">
                         <i class="fa-solid fa-sack-dollar text-lg"></i>
@@ -126,7 +126,7 @@
                 <div class="flex justify-between items-start">
                     <div>
                         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Net Profit</p>
-                        <h3 id="card-profit" class="text-2xl font-bold text-cyan-400 mt-2">$0.00</h3>
+                        <h3 id="card-profit" class="text-2xl font-bold text-cyan-400 mt-2">Rp 0</h3>
                     </div>
                     <div class="p-3 bg-cyan-500/10 text-cyan-400 rounded-lg">
                         <i class="fa-solid fa-money-bill-trend-up text-lg"></i>
@@ -160,7 +160,7 @@
                         <i class="fa-solid fa-eye text-lg"></i>
                     </div>
                 </div>
-                <p class="text-xs text-slate-400 mt-3">CTR: <span id="card-ctr" class="text-slate-200 font-semibold">0%</span> | RPM: <span id="card-rpm" class="text-slate-200 font-semibold">$0</span></p>
+                <p class="text-xs text-slate-400 mt-3">CTR: <span id="card-ctr" class="text-slate-200 font-semibold">0%</span> | RPM: <span id="card-rpm" class="text-slate-200 font-semibold">Rp 0</span></p>
             </div>
         </section>
 
@@ -170,7 +170,7 @@
             <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-sm">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-base font-semibold text-slate-100 flex items-center gap-2">
-                        <i class="fa-solid fa-chart-column text-emerald-400"></i> Analisis Finansial (Earning, Spend, Profit)
+                        <i class="fa-solid fa-chart-column text-emerald-400"></i> Analisis Finansial (Earning, Spend, Profit dalam Rp)
                     </h2>
                 </div>
                 <div class="relative h-72">
@@ -196,7 +196,7 @@
             <div class="p-5 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div>
                     <h2 class="text-base font-semibold text-slate-100 flex items-center gap-2">
-                        <i class="fa-solid fa-table text-slate-400"></i> Rincian Data Financial & Performa Harian
+                        <i class="fa-solid fa-table text-slate-400"></i> Rincian Data Financial & Performa Harian (Rupiah)
                     </h2>
                     <p class="text-xs text-slate-400 mt-0.5">Catatan Spend, Earning, Profit, ROI, dan Impression per hari</p>
                 </div>
@@ -215,15 +215,15 @@
                         <tr>
                             <th class="py-3.5 px-4">Tanggal</th>
                             <th class="py-3.5 px-4">Sumber</th>
-                            <th class="py-3.5 px-4 text-right">Spend ($)</th>
-                            <th class="py-3.5 px-4 text-right">Earning ($)</th>
-                            <th class="py-3.5 px-4 text-right">Profit ($)</th>
+                            <th class="py-3.5 px-4 text-right">Spend (Rp)</th>
+                            <th class="py-3.5 px-4 text-right">Earning (Rp)</th>
+                            <th class="py-3.5 px-4 text-right">Profit (Rp)</th>
                             <th class="py-3.5 px-4 text-right">ROI (%)</th>
                             <th class="py-3.5 px-4 text-right">Impression</th>
                             <th class="py-3.5 px-4 text-right">Klik</th>
                             <th class="py-3.5 px-4 text-right">CTR (%)</th>
                             <th class="py-3.5 px-4 text-right">Fill Rate (%)</th>
-                            <th class="py-3.5 px-4 text-right">RPM ($)</th>
+                            <th class="py-3.5 px-4 text-right">RPM (Rp)</th>
                         </tr>
                     </thead>
                     <tbody id="table-body" class="divide-y divide-slate-700/50">

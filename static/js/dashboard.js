@@ -6,13 +6,18 @@ document.addEventListener("DOMContentLoaded", () => {
     loadDashboardData();
 });
 
+function formatRupiah(num) {
+    if (num === null || num === undefined) return "Rp 0";
+    const rounded = Math.round(num);
+    return "Rp " + rounded.toLocaleString("id-ID");
+}
+
 function handlePeriodChange() {
     const period = document.getElementById("filter-period").value;
     const customContainer = document.getElementById("custom-date-container");
 
     if (period === "custom") {
         customContainer.classList.remove("hidden");
-        // Pre-fill default dates if empty
         const today = new Date().toISOString().split('T')[0];
         if (!document.getElementById("custom-end-date").value) {
             document.getElementById("custom-end-date").value = today;
@@ -80,11 +85,11 @@ async function fetchSummary(query) {
         const data = await res.json();
         const s = data.summary;
 
-        document.getElementById("card-spend").textContent = `$${s.total_spend.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-        document.getElementById("card-earning").textContent = `$${s.total_earning.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+        document.getElementById("card-spend").textContent = formatRupiah(s.total_spend);
+        document.getElementById("card-earning").textContent = formatRupiah(s.total_earning);
         
         const profitEl = document.getElementById("card-profit");
-        profitEl.textContent = `$${s.total_profit.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+        profitEl.textContent = formatRupiah(s.total_profit);
         if (s.total_profit < 0) {
             profitEl.className = "text-2xl font-bold text-rose-400 mt-2";
         } else {
@@ -101,7 +106,7 @@ async function fetchSummary(query) {
 
         document.getElementById("card-impressions").textContent = s.total_impressions.toLocaleString('id-ID');
         document.getElementById("card-ctr").textContent = `${s.avg_ctr}%`;
-        document.getElementById("card-rpm").textContent = `$${s.avg_rpm.toFixed(2)}`;
+        document.getElementById("card-rpm").textContent = formatRupiah(s.avg_rpm);
     } catch (err) {
         console.error("Error fetching summary:", err);
     }
@@ -121,7 +126,7 @@ function renderCharts(data) {
     if (chartFinancial) chartFinancial.destroy();
     if (chartRoiCtr) chartRoiCtr.destroy();
 
-    // Chart 1: Earning, Spend, Profit
+    // Chart 1: Earning, Spend, Profit dalam Rupiah
     const ctx1 = document.getElementById("chart-financial").getContext("2d");
     chartFinancial = new Chart(ctx1, {
         type: "line",
@@ -129,7 +134,7 @@ function renderCharts(data) {
             labels: data.dates,
             datasets: [
                 {
-                    label: "Earning ($)",
+                    label: "Earning (Rp)",
                     data: data.earnings,
                     borderColor: "#10b981", // Emerald 500
                     backgroundColor: "rgba(16, 185, 129, 0.1)",
@@ -138,7 +143,7 @@ function renderCharts(data) {
                     tension: 0.3
                 },
                 {
-                    label: "Spend ($)",
+                    label: "Spend (Rp)",
                     data: data.spends,
                     borderColor: "#f43f5e", // Rose 500
                     backgroundColor: "rgba(244, 63, 94, 0.1)",
@@ -147,7 +152,7 @@ function renderCharts(data) {
                     tension: 0.3
                 },
                 {
-                    label: "Profit ($)",
+                    label: "Profit (Rp)",
                     data: data.profits,
                     borderColor: "#06b6d4", // Cyan 500
                     backgroundColor: "rgba(6, 182, 212, 0.05)",
@@ -167,7 +172,13 @@ function renderCharts(data) {
             },
             scales: {
                 x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148, 163, 184, 0.1)" } },
-                y: { ticks: { color: "#94a3b8", callback: v => "$" + v }, grid: { color: "rgba(148, 163, 184, 0.1)" } }
+                y: { 
+                    ticks: { 
+                        color: "#94a3b8", 
+                        callback: v => "Rp " + (v / 1000).toLocaleString('id-ID') + "k" 
+                    }, 
+                    grid: { color: "rgba(148, 163, 184, 0.1)" } 
+                }
             }
         }
     });
@@ -258,15 +269,15 @@ async function fetchDailyDetails(query) {
                         ${item.source}
                     </span>
                 </td>
-                <td class="py-3 px-4 text-right font-medium text-rose-400">$${item.spend.toFixed(2)}</td>
-                <td class="py-3 px-4 text-right font-medium text-emerald-400">$${item.earning.toFixed(2)}</td>
-                <td class="py-3 px-4 text-right ${profitClass}">$${item.profit.toFixed(2)}</td>
+                <td class="py-3 px-4 text-right font-medium text-rose-400">${formatRupiah(item.spend)}</td>
+                <td class="py-3 px-4 text-right font-medium text-emerald-400">${formatRupiah(item.earning)}</td>
+                <td class="py-3 px-4 text-right ${profitClass}">${formatRupiah(item.profit)}</td>
                 <td class="py-3 px-4 text-right ${roiClass}">${item.roi}%</td>
-                <td class="py-3 px-4 text-right">${item.impressions.toLocaleString()}</td>
-                <td class="py-3 px-4 text-right">${item.clicks.toLocaleString()}</td>
+                <td class="py-3 px-4 text-right">${item.impressions.toLocaleString('id-ID')}</td>
+                <td class="py-3 px-4 text-right">${item.clicks.toLocaleString('id-ID')}</td>
                 <td class="py-3 px-4 text-right font-medium text-amber-400">${item.ctr}%</td>
                 <td class="py-3 px-4 text-right font-medium text-purple-400">${item.fill_rate}%</td>
-                <td class="py-3 px-4 text-right font-medium text-cyan-400">$${item.rpm.toFixed(2)}</td>
+                <td class="py-3 px-4 text-right font-medium text-cyan-400">${formatRupiah(item.rpm)}</td>
             `;
             tbody.appendChild(tr);
         });

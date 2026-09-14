@@ -35,7 +35,7 @@ class GAMService:
         raise NotImplementedError("Silakan sesuaikan konfigurasi Network Code dan SDK Google Ad Manager.")
 
     def _generate_mock_data(self, start_date, end_date):
-        """Generasi data simulasi GAM realistis."""
+        """Generasi data simulasi GAM realistis dalam mata uang Rupiah (IDR)."""
         results = []
         current_date = start_date
         random.seed(42)
@@ -48,8 +48,10 @@ class GAMService:
             matched_requests = int(base_requests * random.uniform(0.82, 0.94))
             impressions = int(matched_requests * random.uniform(0.88, 0.96))
             clicks = int(impressions * random.uniform(0.012, 0.028))
-            revenue = round((impressions / 1000.0) * random.uniform(1.85, 3.40), 2)
-            spend = round(revenue * random.uniform(0.35, 0.65), 2) # Est. Spend 35%-65% dari Revenue
+            
+            # Nominal dalam Rupiah (Rp)
+            revenue = round((impressions / 1000.0) * random.uniform(28000, 52000), 0)
+            spend = round(revenue * random.uniform(0.35, 0.65), 0)
 
             results.append({
                 "date": current_date,
